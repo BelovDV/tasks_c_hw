@@ -4,9 +4,11 @@
 
 void printer(List_iterator *root)
 {
-	printf("p\n");
-	for (List_iterator *iter = root->right; iter != root; iter = iter->right)
-		printf("%lu\n", iter->data_1);
+	printf("print:\np\tr\n");
+	for (List_iterator *iter = root->right, *riter = root->left;
+		 iter != root;
+		 iter = iter->right, riter = riter->left)
+		printf("%lu\t%lu\n", iter->data_1, riter->data_1);
 }
 
 void test_1()

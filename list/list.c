@@ -28,6 +28,7 @@ static void prepare_page()
 
 	list_pages[current_page] = calloc(page_size * 1024,
 									  sizeof(List_iterator));
+	assert(list_pages[current_page] != NULL);
 	for (size_t i = 0; i < page_size * 1024; ++i)
 		list_insert_righter(&free_root, list_pages[current_page] + i);
 	++current_page;
@@ -43,6 +44,11 @@ List_iterator *list_create(uint64_t data_1, uint64_t data_2)
 	result->data_2 = data_2;
 	result->left = result->right = result;
 	return result;
+}
+
+List_iterator *list_create_zero()
+{
+	return list_create(0, 0);
 }
 
 void list_remove(List_iterator *iter)
@@ -98,9 +104,7 @@ List_iterator *list_join(List_iterator *left, List_iterator *right)
 	}
 
 	List_iterator *left_end = left->left;
-	List_iterator *left_begin = left->right;
 	List_iterator *right_end = right->left;
-	List_iterator *right_begin = right->right;
 
 	left->left = right_end;
 	right_end->right = left;

@@ -5,6 +5,8 @@
 
 struct List_iterator;
 
+// List is List_iterator* root
+
 typedef struct List_iterator
 {
 	struct List_iterator *left;
@@ -18,6 +20,8 @@ typedef struct List_iterator
  * @brief allocate memory for node, it is new root
  */
 List_iterator *list_create(uint64_t data_1, uint64_t data_2);
+
+List_iterator *list_create_zero();
 
 /**
  * @brief free memory at iter
