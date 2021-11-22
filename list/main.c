@@ -55,9 +55,15 @@ void test_2()
 	list_insert_righter(left, list_create(10, 10));
 	list_insert_righter(right, list_create(11, 11));
 
-	List_iterator *result = list_join(left, right);
-	printer(result);
-	list_destructor(result);
+	left = list_join(left, right);
+	printer(left);
+
+	right = list_create(2, 2);
+	list_insert_righter(right, list_create(15, 15));
+	left = list_join(left, right);
+	printer(left);
+
+	list_destructor(left);
 }
 
 int main()
