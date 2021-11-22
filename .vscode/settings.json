@@ -1,0 +1,28 @@
+{
+  "files.associations": {
+    "*.asm0": "asm0",
+    "header_dull.h": "c",
+    "assembler.h": "c",
+    "check.h": "c",
+    "dull.h": "c",
+    "tokenization.h": "c",
+    "array": "c",
+    "deque": "c",
+    "string": "c",
+    "unordered_map": "c",
+    "vector": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "map.h": "c",
+    "stack.h": "c",
+    "list.h": "c",
+    "atomic": "cpp",
+    "functional": "cpp",
+    "random": "cpp",
+    "numeric": "cpp",
+    "cmath": "cpp",
+    "stdlib.h": "c",
+    "*.tcc": "c"
+  },
+  "C_Cpp.default.includePath": ["${workspaceFolder}/asm0/inc"]
+}

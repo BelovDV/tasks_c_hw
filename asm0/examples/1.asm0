@@ -1,0 +1,7 @@
+
+_start
+	mov		r1	10
+	libcall	0
+	syscall	0
+
+
