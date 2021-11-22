@@ -41,6 +41,7 @@ List_iterator *list_create(uint64_t data_1, uint64_t data_2)
 	list_erase(result);
 	result->data_1 = data_1;
 	result->data_2 = data_2;
+	result->left = result->right = result;
 	return result;
 }
 
@@ -73,4 +74,39 @@ void list_insert_righter(List_iterator *left, List_iterator *right)
 	left->right = right;
 	if (right->right)
 		right->right->left = right;
+}
+
+void list_destructor(List_iterator *root)
+{
+	assert(root != NULL);
+	while (root->right != root)
+		list_remove(root->right);
+	list_insert_righter(&free_root, root);
+}
+
+List_iterator *list_join(List_iterator *left, List_iterator *right)
+{
+	if (left->right == left)
+	{
+		list_remove(left);
+		return right;
+	}
+	if (right->right == right)
+	{
+		list_remove(right);
+		return left;
+	}
+
+	List_iterator *left_end = left->left;
+	List_iterator *left_begin = left->right;
+	List_iterator *right_end = right->left;
+	List_iterator *right_begin = right->right;
+
+	left->left = right_end;
+	right_end->right = left;
+	left_end->right = right;
+	right->left = left_end;
+	list_remove(right);
+
+	return left;
 }

@@ -15,7 +15,7 @@ typedef struct List_iterator
 } List_iterator;
 
 /**
- * @brief allocate memory for node
+ * @brief allocate memory for node, it is new root
  */
 List_iterator *list_create(uint64_t data_1, uint64_t data_2);
 
@@ -37,5 +37,15 @@ void list_erase(List_iterator *iter);
  * @param right node which to insert (should be lone)
  */
 void list_insert_righter(List_iterator *left, List_iterator *right);
+
+/**
+ * @brief free nodes of list
+ */
+void list_destructor(List_iterator *root);
+
+/**
+ * @brief link lists and get their union
+ */
+List_iterator *list_join(List_iterator *left, List_iterator *right);
 
 #endif
