@@ -1,0 +1,31 @@
+# example 3
+
+	error
+	error
+:close
+	dump
+	syscall exit
+_start
+	mode	7
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	mov		r1		55
+	mode	7
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	dump
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	jmp		2		end
+	error
+	error
+	error
+:end
+	jmp		1		close
+	error
+	error
+	syscall exit
+	error

@@ -1,5 +1,3 @@
-
-
 #ifndef HEADER_DULL
 #define HEADER_DULL
 
@@ -15,6 +13,7 @@ struct Dull_section
 struct Dull
 {
 	struct Dull_header header;
+	int version;
 	size_t start_offset;
 };
 

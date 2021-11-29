@@ -1,5 +1,6 @@
 #include "assembler.h"
 #include "utility.h"
+#include "check.h"
 
 int main(int argc, char **argv)
 {
@@ -17,11 +18,12 @@ int main(int argc, char **argv)
 	FILE *log = stderr;
 	if (argc >= 4)
 	{
-		FILE *log_file = fopen(argv[3], "r");
+		FILE *log_file = fopen(argv[3], "w");
 		if (!log_file)
 			fprintf(log, "can't open \"%s\"\n", argv[3]);
 		else
 			log = log_file;
+		setvbuf(log, NULL, _IONBF, 0);
 	}
 	if (argc >= 5)
 	{
@@ -29,20 +31,21 @@ int main(int argc, char **argv)
 		// TODO - ask for additional arguments and pass them to asm
 	}
 
-	Text_string_static input = text_read_file(argv[1]);
+	Text_string input = text_read_file(argv[1]);
 
-	struct Dull *result = NULL;
-	size_t size = 0;
+	Array_static_frame result = {0, 0};
 
-	if (assemble(input, &result, log, &size))
+	int was_error = assemble(input, &result, log);
+	if (was_error)
 		printf("assembling failed\n");
 	else
 	{
-		FILE *output = wrapped_fopen(argv[2], "w");
-		fwrite(result, 1, size, output);
+		FILE *output = wrapped_fopen(output, argv[2], "w");
+		fwrite(result.array, 1, result.size, output);
 		fclose(output);
-		free(result);
+		free(result.array);
 	}
-	free(input.string);
+	free(input.value);
 	fclose(log);
+	return was_error;
 }

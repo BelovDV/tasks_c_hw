@@ -22,6 +22,7 @@ void check_print_error_message(
 		vfprintf(stderr,
 				 format,
 				 argptr))
+		fprintf(stderr, "\n");
 	{
 		abort();
 	}

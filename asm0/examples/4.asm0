@@ -1,0 +1,44 @@
+# example 4
+
+:print_new_line
+	mov		r1		10
+	libcall	write_char
+	ret
+	error
+	error
+	error
+:print_int64
+	mode	7
+	libcall	write_num
+	ret
+	error
+	error
+	error
+:close
+	dump
+	syscall exit
+	error
+	error
+	error
+_start
+	call	1		print_new_line
+	mov		r1		123
+	call	1		print_int64
+	call	1		print_new_line
+	mov		r1		456
+	call	1		print_int64
+	call	1		print_new_line
+	mov		r1		789
+	call	1		print_int64
+	call	1		print_new_line
+	jmp		1		end
+	error
+	error
+	error
+:end
+	jmp		1		close
+	error
+	error
+	error
+	mov		r2		r3
+	mov		[r1+4*r2+1234]	r2+8*r4+2345

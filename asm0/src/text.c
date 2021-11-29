@@ -2,138 +2,129 @@
 #include "check.h"
 #include "utility.h"
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
 
-uint64_t text_get_division(Text_string_static text, char delimiter,
-						   Text_string_index **dest)
+#ifdef FALL_ON_ERROR
+#define ERRNO check(errno == 0);
+#define ALLOC(ptr, size)              \
+	ptr = calloc(size, sizeof(*ptr)); \
+	check_message(ptr != NULL, check_calloc_failed, size);
+#define FOPEN(ptr, name, parameters)     \
+	FILE *ptr = fopen(name, parameters); \
+	check_message(ptr != NULL, check_format_can_not_open_file, name);
+#else
+#define END_IF(error)  \
+	if (error)         \
+	{                  \
+		return result; \
+	}
+#define ERRNO \
+	END_IF(errno)
+#define ALLOC(ptr, size)              \
+	ptr = calloc(size, sizeof(*ptr)); \
+	END_IF(ptr == NULL)
+#define FOPEN(ptr, name, parameters)     \
+	FILE *ptr = fopen(name, parameters); \
+	END_IF(ptr == NULL)
+#endif
+
+Text_string text_read_stream(FILE *stream)
 {
-	debug_check(dest != NULL);
+	debug_check(stream != NULL);
+	errno = 0;
 
-	uint64_t length = text.length;
+	Text_string result = {0, 0};
 
-	uint64_t count = 0;
-	for (uint64_t iter = 0; iter < text.length;)
-	{
-		while (iter < length && text.string[iter] == delimiter)
-			++iter;
-		while (iter < length && text.string[iter] != delimiter)
-			++iter;
-		if (iter < length || text.string[iter - 1] != delimiter)
-			++count;
-	}
+	fseek(stream, 0, SEEK_END);
+	result.size = ftell(stream);
+	fseek(stream, 0, SEEK_SET);
+	ERRNO
 
-	free(*dest);
-	*dest = wrapped_calloc(count, sizeof(**dest));
+	ALLOC(result.value, result.size)
+	fread(result.value, sizeof(*result.value), result.size, stream);
+	ERRNO
 
-	uint64_t position = 0;
-	for (uint64_t iter = 0, last = 0; iter < length;)
-	{
-		while (last < length && text.string[last] == delimiter)
-			++last;
-		iter = last;
-		while (iter < length && text.string[iter] != delimiter)
-			++iter;
-		if (iter > last)
-		{
-			(*dest)[position].index = last;
-			(*dest)[position].length = iter - last;
-			++position;
-		}
-		last = iter + 1;
-	}
-	debug_check(position == count);
-
-	return count;
+	return result;
 }
 
-uint64_t text_get_division_with_empty(Text_string_static text, char delimiter,
-									  Text_string_index **dest)
+Text_string text_read_file(const char *filename)
 {
-	debug_check(dest != NULL);
-	size_t length = text.length;
-	const char *string = text.string;
+	debug_check(filename != NULL);
 
-	size_t count = 1;
+	Text_string result = {0, 0};
+
+	FOPEN(file, filename, "r")
+	result = text_read_stream(file);
+	fclose(file);
+
+	return result;
+}
+
+int text_write_stream(FILE *stream, Text text, const char *del)
+{
+	debug_check(stream != NULL);
+	debug_check(text.size == 0 || text.indexation != NULL);
+
+	for (size_t i = 0; i < text.size; ++i)
+		if (fprintf(stream, "%.*s%s",
+					(int)text.indexation[i].size,
+					text.indexation[i].value,
+					del) < 0)
+			return 1;
+	return 0;
+}
+
+int text_write_file(const char *filename, Text text, const char *del)
+{
+	debug_check(filename != NULL);
+	debug_check(text.size == 0 || text.indexation != NULL);
+
+	int result = 1;
+
+	FOPEN(file, filename, "w")
+
+	result = text_write_stream(file, text, del);
+
+	fclose(file);
+
+	return result;
+}
+
+#define IS_DEL(symbol) strcnt(delimiters, symbol)
+
+Text text_decompose(Text_string text, const char *delimiters, int skip_empty)
+{
+	debug_check(text.size == 0 || text.value != NULL);
+
+	Text result = {0, 1};
+	size_t length = text.size;
+	char *string = text.value;
+
+	size_t previous_del = 1; // is previous symbol delimiter (bool)
 	for (size_t iter = 0; iter < length; ++iter)
-		if (string[iter] == delimiter)
-			++count;
+		if (IS_DEL(string[iter]) && !(skip_empty && previous_del))
+			++result.size, previous_del = 1;
+		else
+			previous_del = 0;
 
-	free(*dest);
-	*dest = wrapped_calloc(count, sizeof(**dest));
+	ALLOC(result.indexation, result.size)
+	size_t start = 0; // position after previous delimiter (size_t)
+	size_t line = 0;  // number of line
+	for (size_t iter = 0; iter < length; ++iter)
+		if (IS_DEL(string[iter]) && (!skip_empty || start < iter))
+		{
+			result.indexation[line].size = iter - start;
+			result.indexation[line].value = string + start;
+			start = iter + 1;
+			++line;
+		}
 
-	size_t position = 0;
-	for (size_t number = 0; number < count; ++number)
+	if (!skip_empty || start < length)
 	{
-		(*dest)[number].index = position;
-		while (position < length && string[position] != delimiter)
-			++position;
-		(*dest)[number].length = position - (*dest)[number].index;
-		++position;
+		result.indexation[line].size = length - start;
+		result.indexation[line].value = string + start;
 	}
-	return count;
-}
-
-Text_string_static text_read_stream(FILE *stream)
-{
-	debug_check(stream != NULL);
-
-	check(fseek(stream, 0, SEEK_END) == 0);
-	uint64_t file_size = ftell(stream);
-	check(fseek(stream, 0, SEEK_SET) == 0);
-
-	char *text = (char *)malloc(file_size);
-	check(text != NULL);
-
-	check(fread(text, sizeof(*text), file_size, stream) == file_size);
-
-	Text_string_static result;
-	result.string = text;
-	result.length = file_size;
-
+	debug_check(line + 1 == result.size);
 	return result;
-}
-
-Text_string_static text_read_file(const char *filename)
-{
-	debug_check(filename != NULL);
-
-	FILE *file = wrapped_fopen(filename, "r");
-
-	Text_string_static result = text_read_stream(file);
-
-	fclose(file);
-
-	return result;
-}
-
-void text_write_stream(FILE *stream,
-					   Text_string_static text,
-					   uint64_t lines_count,
-					   Text_string_index *lines,
-					   char delimiter)
-{
-	debug_check(stream != NULL);
-	debug_check(text.string != NULL);
-
-	for (uint64_t i = 0; i < lines_count; ++i)
-	{
-		debug_check(lines[i].index + lines[i].length <= text.length);
-		fprintf(stream, "%.*s%c",
-				(int)(lines[i].length),
-				text.string + lines[i].index,
-				delimiter);
-	}
-}
-
-void text_write_file(const char *filename, Text_string_static text,
-					 uint64_t lines_count, Text_string_index *lines, char delimiter)
-{
-	debug_check(filename != NULL);
-	debug_check(text.string != NULL);
-
-	FILE *file = wrapped_fopen(filename, "w");
-
-	text_write_stream(file, text, lines_count, lines, delimiter);
-	fclose(file);
 }

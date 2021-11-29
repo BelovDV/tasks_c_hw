@@ -1,0 +1,19 @@
+# translate double to size_t
+
+:print_uint64
+	mode	3
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	ret
+
+:scanf_double
+	mode	15
+	libcall	read_num
+	ret
+
+_start
+	call	1	scanf_double
+	mov		r5	r4
+	call	1	print_uint64
+	syscall	exit

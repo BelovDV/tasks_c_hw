@@ -1,0 +1,21 @@
+_start
+
+	mode	7
+	mov		r1		15
+	mov		r2		7
+	sub		r1		r2
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	mul		r1		10
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	div		r1		2
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	dump
+	syscall	exit
+
+	mov	r1+8*r5+812	[4*r1+2442198327]	888

@@ -5,187 +5,358 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char token_errors[e_tokenization_error_count][64] =
+const char token_errors[e_tok_error_count][64] =
 	{
 		"nothing wrong",
-		"wrong line",
 		"unsupported",
 		"deprecated",
-		"wrong section",
-		"too long line",
-		"multiply start"};
+		"too_long_line",
+		"multiply_start",
+		"wrong_line_start",
+		"wrong_instr",
+		"wrong_arg",
+		"wrong_label"};
 
-void tokenization_initialise(struct Tokenization_condition *condition)
+void tokenization_initialise(Tokenization_condition *condition)
 {
 	debug_check(condition != NULL);
-	condition->dictionary = NULL;
+	condition->dictionary.array = NULL;
+	condition->dictionary.size = 0;
+	condition->dictionary.capacity = 0;
 	condition->flags = 0;
-	condition->last_instr.id = e_instr_id_nothing;
-	condition->section = e_token_section_nothing;
+	condition->last_instr.id = e_lang_instr_error;
 }
 
-void static token_decode_instr(
-	struct Tokenization_condition *condition,
-	const char *begin, const char *end, size_t line);
+static void token_decode_data(
+	Tokenization_condition *condition,
+	const char *begin, const char *end);
 
-void static token_decode_data(
-	struct Tokenization_condition *condition,
-	const char *begin, const char *end, size_t line);
+static void token_decode_label(
+	Tokenization_condition *condition,
+	const char *begin, const char *end);
 
-void tokenization_decode(struct Tokenization_condition *condition,
-						 const char *begin, const char *end, size_t line)
+void tokenization_decode(Tokenization_condition *condition,
+						 const char *begin, const char *end,
+						 int second)
 {
+	condition->flags &= ~e_tok_mask_changed_data;
+	condition->flags &= ~e_tok_mask_changed_instr;
+	condition->flags &= ~e_tok_mask_changed_label;
+	condition->flags &= ~e_tok_mask_ready_jmp;
+	condition->error_id = e_tok_error_nothing;
+
 	debug_check(condition != NULL);
 	debug_check(begin != NULL);
 	debug_check(end != NULL);
 	debug_check(begin <= end);
 
-	printf("Line %lu:\n\t\"", line);
-	for (const char *iter = begin; iter != end; ++iter)
-	{
-		printf("%c", *iter);
-	}
-	printf("\"\n");
-
+	for (const char *iter = end - 1; iter >= begin; --iter)
+		if (*iter == '#')
+			end = iter;
+	while (end > begin && (end[-1] == ' ' || end[-1] == '\t'))
+		--end;
 	if (end == begin)
 		return;
 
-	if (end - begin >= e_const_tokenization_max_line_length)
+	if (end - begin >= e_lang_max_line_length)
 	{
-		condition->error_id = e_tokenization_error_too_long_line;
+		condition->error_id = e_tok_error_too_long_line;
 		return;
 	}
 
-	condition->section = e_token_section_text; // TODO!!!
-
-	condition->flags &= ~e_token_flag_mask_data_changed;
-	condition->flags &= ~e_token_flag_mask_intstr_changed;
-	switch (*begin)
+	if (*begin == ':')
+		token_decode_label(condition, begin, end);
+	else if (*begin == '_')
 	{
-	case ':': // label
-	case '.': // section
-		condition->error_id = e_tokenization_error_unsupported;
-		break;
-	case '_': // start
-		if (condition->flags & e_token_flag_mask_start)
-			condition->error_id = e_tokenization_error_multiply_start;
-		condition->flags |= e_token_flag_mask_start;
-		break;
+		LOG_L(*begin, "%c")
+		if (condition->flags & e_tok_mask_start_found)
+			condition->error_id = e_tok_error_multiply_start;
+		condition->flags |= e_tok_mask_start_found;
+		LOG_L(condition->flags, "0x%x")
+	}
+	else if (*begin == '\t')
+		token_decode_data(condition, begin, end);
+	else
+		condition->error_id = e_tok_error_wrong_line_start;
 
-	case '\t': // instruction / data
-		if (condition->section == e_token_section_text)
-			token_decode_instr(condition, begin, end, line);
-		else if (condition->section == e_token_section_data)
-			condition->error_id = e_tokenization_error_unsupported;
-		else
-			condition->error_id = e_tokenization_error_wrong_section;
-		break;
-
-	default:
-		condition->error_id = e_tokenization_error_wrong_line;
-		break;
+	if (condition->error_id != e_tok_error_nothing)
+	{
+		LOG_LL(begin, (int)(end - begin), "%.*s")
+		LOG_L(token_errors[condition->error_id], "%s")
+	}
+	if (!second && condition->error_id & e_tok_error_wrong_label)
+	{
+		condition->flags |= e_tok_mask_changed_instr;
 	}
 }
+
+// ===== // ===== // ===== // ===== // ===== // ===== // ===== // ===== //
 
 /**
- * @brief find string in patterns[]
- * @return id of found (or -1)
+ * @brief parse [rx+k*ry+c] string to Argument
+ * @return was error (error - 1)
  */
-int static token_find_keyword(
-	const char patterns[][e_const_language_max_word_length],
-	int max_id, const char *string)
+static int token_parse_arg(const char *name, Argument *result)
 {
-	debug_check(patterns != NULL);
-	debug_check(max_id > 0);
-	for (int id = 0; id < max_id; ++id)
-	{
-		if (strcmp(patterns[id], string) == 0)
-			return id;
-	}
-	return -1;
-}
+	// yes, i know, this function should be subdivided to several smaller... but it isn't true, because it's parts are too specific
+	// in a good way, there should be true regex, but it's too complex problem for me to work on it now
+	result->c = 0;
+	result->content = 0;
+	result->k = 0;
+	result->rx = 7;
+	result->ry = 0;
 
-int static token_parse_arg(const char *name, struct Argument *result)
-{
+	LOG_L(name, "%s")
+	LOG_I
 	size_t length = strlen(name);
-	if (name[0] == '[')
+	result->content = 0;
+	if (*name == '[')
 	{
 		if (name[length - 1] != ']')
 			return 1;
 		++name;
 		length -= 2;
-		result->is_memory = 1;
+		result->content |= e_arg_is_memory;
+		LOG_L("", "is memory%s")
 	}
-	int rx, ry, k;
-	uint64_t c;
-	if (sscanf(name, "r%d+%d*r%d+%lu", &rx, &k, &ry, &c) > 0)
+	if (*name == 'r')
 	{
-		result->constant = c;
-		result->k = (uint8_t)k;
-		result->rx = (uint8_t)rx;
-		result->ry = (uint8_t)ry;
-		return 0;
+		int rx, change;
+		int res = sscanf(name, "r%d%n", &rx, &change);
+		result->rx = (char)rx;
+		LOG_L(result->rx, "%d")
+		if (res < 1)
+			return 1;
+		name += change;
+		length -= change;
+		result->content |= e_arg_is_rx;
+		if (length == 0)
+		{
+			LOG_D
+			return 0;
+		}
+		if (*name != '+')
+			return 1;
+		name += 1;
+		length -= 1;
 	}
-	if (sscanf(name, "%lu", &c) > 0)
+	if (strcnt(name, '*'))
 	{
-		result->constant = c;
-		result->k = 0;
-		result->rx = 15;
-		result->ry = 15;
-		return 0;
+		int k, ry, change;
+		int res = sscanf(name, "%d*r%d%n", &k, &ry, &change);
+		if (res < 2)
+			return 1;
+		result->k = k;
+		result->ry = ry;
+		name += change;
+		length -= change;
+		result->content |= e_arg_is_ry;
+		if (length == 0)
+		{
+			LOG_D
+			return 0;
+		}
+		if (*name != '+')
+			return 1;
+		name += 1;
+		length -= 1;
 	}
-	return 1;
+	result->content |= e_arg_is_const;
+	int change;
+	int res = sscanf(name, "%lu%n", &result->c, &change);
+
+	LOG_D
+	if (res < 1 || length - change != 0)
+		return 1;
+	return 0;
 }
 
-void static token_decode_instr(
-	struct Tokenization_condition *condition,
-	const char *begin, const char *end, size_t line)
+/**
+ * @brief find keyword id in language
+ */
+static int token_keyword_id(const char *name)
 {
-	char buffer[e_const_tokenization_max_line_length + 1];
-	char word[5][e_const_tokenization_max_line_length + 1];
+	for (int iter = 0; iter < e_lang_key_count; ++iter)
+		if (strcmp(language_keywords[iter], name) == 0)
+			return iter;
+	return e_lang_key_error;
+}
+
+/**
+ * @brief find instruction id in language
+ */
+static int token_instruction_id(const char *name)
+{
+	for (int iter = 0; iter < e_lang_instr_count; ++iter)
+		if (strcmp(language_instructions[iter].mnemonic, name) == 0)
+			return iter;
+	return e_lang_instr_error;
+}
+
+static void token_decode_data(
+	Tokenization_condition *condition,
+	const char *begin, const char *end)
+{
+	char buffer[e_lang_max_line_length + 1];
+	char word[5][e_lang_max_line_length + 1];
+	word[0][0] = word[1][0] = word[2][0] = word[3][0] = word[4][0] = '\0';
 
 	memcpy(buffer, begin, end - begin);
 	buffer[end - begin] = '\0';
 
-	size_t word_count = 0;
-	int result;
-	if ((result = sscanf(buffer, "%s%s%s%s%s",
-						 word[0], word[1], word[2], word[3], word[4])) > 0)
-		word_count += result;
+	int word_count = sscanf(
+		buffer, "%s%s%s%s%s",
+		word[0], word[1], word[2], word[3], word[4]);
+	LOG_L(word[0], "%s")
+	LOG_I
+	Instruction *instruction = &condition->last_instr;
 
-	if (result == -1)
-		return;
-	debug_check(result != 0);
-
-	for (size_t iter = 0; iter < word_count; ++iter)
-		printf("\t\t\"%s\"\n", word[iter]);
-
-	int id = token_find_keyword(instruction_names, e_instr_id_count, word[0]);
-	printf("   id: %d\n", id);
-
-	if (id == -1 || word_count > 4)
+	if (strcmp(word[0], "jmp") == 0 || strcmp(word[0], "call") == 0)
 	{
-		condition->error_id = e_tokenization_error_wrong_line;
+		if (strcmp(word[0], "jmp") == 0)
+			condition->last_instr.id = e_lang_instr_jmp;
+		else
+			condition->last_instr.id = e_lang_instr_call;
+		Label *labels = condition->dictionary.array;
+		if (word_count == 3)
+		{
+			if (strcmp(word[1], "1") == 0)
+				instruction->argv[0].k = 1;
+			else if (strcmp(word[1], "2") == 0)
+				instruction->argv[0].k = 2;
+			else if (strcmp(word[1], "4") == 0)
+				instruction->argv[0].k = 4;
+			else if (strcmp(word[1], "8") == 0)
+				instruction->argv[0].k = 8;
+			else
+			{
+				condition->error_id = e_tok_error_wrong_arg;
+				return;
+			}
+			for (size_t i = 0; i < condition->dictionary.size; ++i)
+			{
+				instruction->argc = 1;
+				instruction->argv[0].content = e_arg_is_const;
+
+				if (strcmp(word[2], labels[i].name) == 0)
+				{
+					LOG_L(word[1], "%s")
+					LOG_L(instruction->argv[0].k, "jmp %hhd")
+					instruction->argv[0].c = labels[i].position;
+					LOG_L(word[2], "%s")
+					LOG_L(labels[i].position, "0x%lx")
+					condition->flags |= e_tok_mask_changed_instr;
+					LOG_D
+					return;
+				}
+			}
+		}
+		else if (word_count == 2)
+		{
+			printf("word count = 2\n");
+			size_t input;
+			if (!sscanf(word[1], "%lu", &input))
+			{
+				condition->error_id = e_tok_error_wrong_arg;
+				printf("ERROR\n");
+				return;
+			}
+			printf("word 1: %lu\n", input);
+			printf("word 1: %ld\n", (Word)input);
+			instruction->argc = 1;
+			instruction->argv[0].content = input;
+			instruction->argv[0].k = -128;
+			condition->flags |= e_tok_mask_ready_jmp;
+			condition->flags |= e_tok_mask_changed_instr;
+			LOG_L(word[1], "%s")
+			return;
+		}
+		LOG_L(word[2], "label %s wasn't found") // or k != 1, 2, 4, 8
+		LOG_D
+		condition->error_id = e_tok_error_wrong_label;
 		return;
 	}
 
-	condition->flags |= e_token_flag_mask_intstr_changed;
-
-	condition->last_instr.id = id;
-	condition->last_instr.argc = word_count - 1;
-	for (size_t argn = 1; argn < word_count; ++argn)
+	instruction->id = token_instruction_id(word[0]);
+	if (instruction->id == e_lang_key_error)
 	{
-		if (token_parse_arg(word[argn], &condition->last_instr.argv[argn - 1]))
-			condition->error_id = e_tokenization_error_wrong_line;
+		condition->error_id = e_tok_error_wrong_instr;
+		return;
 	}
+	instruction->argc = word_count - 1;
+	for (int i = 1; i < word_count; ++i)
+	{
+		LOG_L(word[i], "%s")
+		int keyword = token_keyword_id(word[i]);
+		if (keyword == e_lang_key_error)
+		{
+			if (token_parse_arg(word[i], &instruction->argv[i - 1]))
+			{
+				condition->error_id = e_tok_error_wrong_arg;
+				return;
+			}
+			LOG_L(instruction->argv[i - 1].content, "%d")
+		}
+		else
+		{
+			LOG_L(keyword, "%d")
+			instruction->argv[i - 1].content = e_arg_is_const;
+			instruction->argv[i - 1].c = keyword;
+		}
+	}
+	condition->flags |= e_tok_mask_changed_instr;
+
+	LOG_L(instruction->argc, "%d")
+
+	LOG_D
 }
 
-void static token_decode_data(
-	struct Tokenization_condition *condition,
-	const char *begin, const char *end, size_t line)
+static void token_decode_label(
+	Tokenization_condition *condition,
+	const char *begin, const char *end)
 {
-	(void)condition;
-	(void)begin;
-	(void)end;
-	(void)line;
+	char buffer[e_lang_max_line_length + 1];
+	char word[5][e_lang_max_line_length + 1];
+	word[0][0] = word[1][0] = word[2][0] = word[3][0] = word[4][0] = '\0';
+
+	memcpy(buffer, begin, end - begin);
+	buffer[end - begin] = '\0';
+
+	int word_count = sscanf(
+		buffer, "%s%s%s%s%s",
+		word[0], word[1], word[2], word[3], word[4]);
+	LOG_L(word[0], "%s")
+	LOG_I
+
+	if (word_count != 1 || strlen(word[0]) == 1)
+	{
+		condition->error_id = e_tok_error_wrong_label;
+		LOG_L("", "wrong label%s")
+		return;
+	}
+
+	Label *labels = condition->dictionary.array;
+	for (size_t i = 0; i < condition->dictionary.size; ++i)
+	{
+		if (strcmp(word[0], labels[i].name) == 0)
+		{
+			labels[i].name[0] = '\0';
+		}
+	}
+
+	if (condition->dictionary.size * sizeof(Label) == condition->dictionary.capacity)
+	{
+		LOG_L(condition->dictionary.capacity, "%lu")
+		utility_reserve(
+			&condition->dictionary,
+			condition->dictionary.capacity * 2 + 2 * sizeof(Label));
+	}
+
+	Label *label = ((Label *)condition->dictionary.array) +
+				   condition->dictionary.size;
+	memcpy(label->name, word[0] + 1, strlen(word[0]) - 1);
+	label->name[strlen(word[0]) - 1] = '\0';
+	LOG_L(label->name, "%.20s")
+	condition->dictionary.size++;
+	condition->flags |= e_tok_mask_changed_label;
 }

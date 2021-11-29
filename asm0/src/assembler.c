@@ -1,31 +1,27 @@
 #include "assembler.h"
 #include "check.h"
-#include "utility.h"
 #include "tokenization.h"
-#include "language.h"
+#include "dull.h"
 
 #include <string.h>
+#include <stdint.h>
 
 static FILE *log_file;
 
-static int assembler_core(Text_string_static text);
-static void assembler_saver(struct Dull **dest, size_t *size);
-static void assembler_code_instr(struct Tokenization_condition *condition);
+static int assembler_core(Text_string text);
+static void assembler_saver(Array_static_frame *dest);
 
-static size_t text_size = 0;
-static size_t text_capacity = 0;
-static uint8_t *text = NULL;
+static Array_frame bin = {0, 0, 0};
 static size_t start_offset = -1;
 
-int assemble(Text_string_static text, struct Dull **dest,
-			 FILE *log, size_t *size)
+int assemble(Text_string text, Array_static_frame *dest, FILE *log)
 {
-	fprintf(log, "Assembler started working\n");
+	fprintf(log, "Assembler started working\n\n");
 
-	check(text.length != 0);
-	check(text.string != NULL);
+	check(text.size != 0); // debug_check?
+	check(text.value != NULL);
 	check(dest != NULL);
-	check(*dest == NULL);
+	check(dest->size == 0 && dest->array == NULL);
 	check(log != NULL);
 
 	log_file = log;
@@ -33,108 +29,164 @@ int assemble(Text_string_static text, struct Dull **dest,
 	int result = assembler_core(text);
 
 	if (result)
-		fprintf(log_file, "Assembling of program completed with errors\n");
+		fprintf(log_file, "\nAssembling of program completed with errors\n");
 	else
-		assembler_saver(dest, size);
+		assembler_saver(dest);
 
-	fprintf(log, "Assembler finished working\n");
+	fprintf(log, "\nAssembler finished working\n");
+
+	free(bin.array); // sanitizer doesn't notice, should i free static var?
 
 	return result;
 }
 
-static int assembler_core(Text_string_static text)
+static int assembler_core(Text_string text)
 {
-	struct Tokenization_condition *decoder =
-		wrapped_calloc(1, sizeof(*decoder));
+	Tokenization_condition *decoder = wrapped_calloc(decoder, 1);
 	tokenization_initialise(decoder);
-	Text_string_index *indexation = NULL;
-	size_t index_size = text_get_division_with_empty(text, '\n', &indexation);
-	int error = 0;
+	Text index = text_decompose(text, "\n", 0);
 
-	for (size_t line = 0; line < index_size; ++line)
+	for (size_t line = 0; line < index.size; ++line)
 	{
+		LOG_L(line, "%lu");
+		LOG_I;
 		tokenization_decode(
 			decoder,
-			text.string + indexation[line].index,
-			text.string + indexation[line].index + indexation[line].length,
-			line);
-		if (decoder->error_id != e_tokenization_error_nothing)
-		{
-			error = 1;
-			fprintf(log_file, "ERROR: %s\n", token_errors[decoder->error_id]);
-			decoder->error_id = e_tokenization_error_nothing;
-		}
-		if ((decoder->flags & e_token_flag_mask_start) && start_offset == -1)
-			start_offset = text_size;
+			index.indexation[line].value,
+			index.indexation[line].value + index.indexation[line].size,
+			0);
+		LOG_D;
 
-		if (decoder->flags & e_token_flag_mask_intstr_changed)
-			assembler_code_instr(decoder);
+		size_t previous_size = bin.size;
+		if (decoder->flags & e_tok_mask_changed_instr)
+		{
+			if (decoder->flags & e_tok_mask_ready_jmp)
+				decoder->last_instr.argv[0].rx = 1;
+			else
+				decoder->last_instr.argv[0].rx = 0;
+			instr_code(&decoder->last_instr, &bin);
+			fprintf(
+				log_file,
+				"0x%8lx: %-10.10s",
+				previous_size,
+				language_instructions[decoder->last_instr.id].mnemonic);
+			print_raw_data(
+				log_file,
+				(uint8_t *)bin.array + previous_size,
+				bin.size - previous_size, 0);
+			fprintf(log_file, "\n");
+			LOG_L((*((uint8_t *)bin.array + previous_size)), "%hhd")
+		}
+		if (decoder->flags & e_tok_mask_changed_label)
+		{
+			((Label *)decoder->dictionary.array)[decoder->dictionary.size - 1].position = bin.size;
+			LOG_L(bin.size, "label position %lx")
+			fprintf(log_file, "label 0x%lx\n", bin.size);
+		}
+	}
+	decoder->flags &= !e_tok_mask_start_found;
+	bin.size = 0;
+	bin.capacity = 0;
+	free(bin.array);
+	bin.array = NULL;
+
+	for (size_t i = 0; i < decoder->dictionary.size; ++i)
+		fprintf(
+			log_file,
+			"old label %3lu: 0x%4lx: %s\n", i,
+			((Label *)decoder->dictionary.array)[i].position,
+			((Label *)decoder->dictionary.array)[i].name);
+
+	int error = 0;
+	for (size_t line = 0; line < index.size; ++line)
+	{
+		LOG_L(line, "%lu");
+		LOG_I;
+		tokenization_decode(
+			decoder,
+			index.indexation[line].value,
+			index.indexation[line].value + index.indexation[line].size,
+			1);
+		LOG_D;
+		error |= decoder->error_id != e_tok_error_nothing;
+		if (decoder->error_id != e_tok_error_nothing)
+			fprintf(
+				log_file,
+				"ERROR: line %3lu:\t %s\n"
+				"\t'%.*s'\n",
+				line, token_errors[decoder->error_id],
+				(int)index.indexation[line].size, index.indexation[line].value);
+
+		if ((decoder->flags & e_tok_mask_start_found) && start_offset == -1UL)
+		{
+			start_offset = bin.size;
+			LOG_L(start_offset, "0x%lx")
+			fprintf(log_file, "start offset %lu\n", start_offset);
+		}
+		size_t previous_size = bin.size;
+		if (decoder->flags & e_tok_mask_changed_instr)
+		{
+			if (decoder->last_instr.id == e_lang_instr_jmp || decoder->last_instr.id == e_lang_instr_call)
+			{
+				if (decoder->flags & e_tok_mask_ready_jmp)
+					decoder->last_instr.argv[0].rx = 1;
+				else
+					decoder->last_instr.argv[0].rx = 0;
+			}
+			if (instr_code(&decoder->last_instr, &bin))
+			{
+				error = 1;
+				fprintf(log_file,
+						"ERROR: line %3lu:\t %s\n",
+						line, "cannot decode instruction");
+			}
+			else
+			{
+				fprintf(
+					log_file,
+					"0x%8lx: %-10.10s",
+					previous_size,
+					language_instructions[decoder->last_instr.id].mnemonic);
+				print_raw_data(
+					log_file,
+					(uint8_t *)bin.array + previous_size,
+					bin.size - previous_size, 0);
+				fprintf(log_file, "\n");
+			}
+			LOG_L((*((uint8_t *)bin.array + previous_size)), "%hhd")
+		}
+		if (decoder->flags & e_tok_mask_changed_label)
+		{
+			((Label *)decoder->dictionary.array)[decoder->dictionary.size - 1].position = bin.size;
+			LOG_L(bin.size, "label position %lx")
+			fprintf(log_file, "label 0x%lx\n", bin.size);
+		}
 	}
 
+	if (start_offset == (size_t)-1)
+	{
+		fprintf(log_file, "Cannot find start\n");
+		error = 1;
+	}
+
+	free(decoder->dictionary.array);
+	free(index.indexation);
 	free(decoder);
 	return error;
 }
 
-static void assembler_text_add(size_t bytes, void *data)
+static void assembler_saver(Array_static_frame *dest)
 {
-	if (text_size + bytes > text_capacity)
-	{
-		uint8_t *vsp = realloc(text, (text_size + bytes) * 2);
-		check(vsp != NULL && "realloc");
-		text = vsp;
-	}
-	memcpy(text + text_size, data, bytes);
-	text_size += bytes;
-}
-
-static void assembler_instr_long_args(struct Argument *arg)
-{
-	uint8_t data = arg->k << 4;
-	if (arg->is_memory)
-		data |= e_argument_mask_is_memory;
-	if (arg->rx)
-		data |= e_argument_mask_is_rx;
-	if (arg->ry)
-		data |= e_argument_mask_is_ry;
-	if (arg->constant)
-		data |= e_argument_mask_is_const;
-	uint8_t reg = (arg->rx << 4) + arg->ry;
-	assembler_text_add(1, &data);
-	assembler_text_add(1, &reg);
-	if (text[0] & e_argument_mask_is_const)
-		assembler_text_add(8, &arg->constant);
-}
-
-static void assembler_code_instr(struct Tokenization_condition *condition)
-{
-	assembler_text_add(1, &condition->last_instr.id);
-	switch (condition->last_instr.id)
-	{
-	case e_instr_id_mov:
-		assembler_instr_long_args(&condition->last_instr.argv[0]);
-		assembler_instr_long_args(&condition->last_instr.argv[1]);
-		break;
-	case e_instr_id_libcall:
-	case e_instr_id_syscall:
-		assembler_text_add(1, &condition->last_instr.argv[0].constant);
-		break;
-	default:
-		fprintf(log_file, "instruction %d doesn't supported\n",
-				condition->last_instr.id);
-	}
-}
-
-static void assembler_saver(struct Dull **dest, size_t *size)
-{
-	*dest = wrapped_calloc(1, sizeof(**dest) + text_size);
-	(*dest)->header.magic[0] = 'd';
-	(*dest)->header.magic[1] = 'u';
-	(*dest)->header.magic[2] = 'l';
-	(*dest)->header.magic[3] = 'l';
-	(*dest)->start_offset = start_offset;
-	uint8_t *data = (uint8_t *)*dest;
-	memcpy(data + sizeof(*dest), text, text_size);
-	*size = text_size + sizeof(**dest);
-	printf("start: %lu\n", start_offset);
-	printf("size: %lu\n", *size);
+	dest->size = bin.size + sizeof(struct Dull);
+	wrapped_calloc(dest->array, dest->size);
+	struct Dull *header = dest->array;
+	header->header.magic[0] = 'd';
+	header->header.magic[1] = 'u';
+	header->header.magic[2] = 'l';
+	header->header.magic[3] = 'l';
+	header->version = ASM0_VERSION;
+	header->start_offset = start_offset;
+	uint8_t *data = (uint8_t *)(header + 1);
+	memcpy(data, bin.array, bin.size);
+	LOG_L(bin.size, "%lu");
 }

@@ -1,0 +1,67 @@
+# example 5
+
+:print_new_line
+	mov		r1		10
+	libcall	write_char
+	ret
+
+:print_double
+	mode	15
+	libcall	write_num
+	call	1	print_new_line
+	ret
+
+:scanf_double
+	mode	15
+	libcall	read_num
+	ret
+
+:find_D
+	mul		r2	r2
+	mul		r1	r3
+	mul		r1	4616189618054758400
+	sub		r2	r1
+	mov		r0	r2
+	mov		r1	r2
+	call	1	print_double
+	call	1	print_new_line
+	ret
+
+:print_roots # a b c d -> void ; print x1 x2
+	mov		r6	0
+	sub		r6	r2
+	div		r6	r1
+	div		r6	4611686018427387904
+	div		r0	4611686018427387904
+	div		r0	r1
+	mov		r5	r6
+	sub		r5	r0
+	call	2	print_double
+	mov		r5	r6
+	add		r5	r0
+	call	2	print_double
+	ret
+
+_start
+
+# r1=a r2=b r3=c
+	call	2	scanf_double
+	mov		r1	r4
+	call	2	scanf_double
+	mov		r2	r4
+	call	2	scanf_double
+	mov		r3	r4
+# r4=d r5=a
+	mov		r5	r1
+	mov		r6	r2
+	mov		r7	r3
+	call	2	find_D
+	mov		r5	r1
+	mov		r1	r4
+	libcall	sqrt
+	mov		r4	r0
+# result
+	mov		r6	r2
+	mov		r7	r3
+	call	2	print_roots
+	syscall	exit

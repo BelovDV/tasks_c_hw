@@ -1,7 +1,18 @@
-
 _start
-	mov		r1	10
-	libcall	0
-	syscall	0
+	mode	15
+	libcall	read_num
+	mov		r1		r0
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	mov		r1		r0
+	mode	7
+	libcall	write_num
+	mov		r1		10
+	libcall	write_char
+	dump
+	syscall	exit
 
+	mov	r1+8*r5+812	[4*r1+2442198327]	888
 
+# (?<=(\\s|\\[|\\+|[0-9]))r[0-7](?=(\\s|\\]|\\+))
