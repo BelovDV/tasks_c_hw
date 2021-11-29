@@ -1,116 +1,191 @@
 #include "list.h"
 
-#include <stdlib.h>
 #include <assert.h>
 
-#define pages_count 64
-static List_iterator *list_pages[pages_count];
-static size_t current_page = 0;
-static List_iterator free_root = {&free_root, &free_root, 0, 0};
+#include <stdio.h>
 
-static void free_pages()
+typedef struct
 {
-	for (size_t i = 0; i < pages_count; ++i)
-		free(list_pages[i]);
+	Index right;
+	Index left;
+} Node;
+
+/**
+ * @brief size of full element
+ */
+static size_t size(List *list)
+{
+	return sizeof(Node) + list->element_size;
 }
 
-static void prepare_page()
+/**
+ * @brief node from offset
+ */
+static Node *at(List *list, size_t offset)
 {
-	static int vsp = 1;
-	if (vsp)
+	if (offset >= list->capacity)
+		return NULL;
+	return (Node *)((char *)list->array + offset);
+}
+
+/**
+ * @brief offset from node
+ */
+static size_t offset(List *list, Node *node)
+{
+	return (char *)node - (char *)list->array;
+}
+
+void list_initialize(List *list, size_t element_size)
+{
+	assert(list != NULL);
+	list->array = NULL;
+	list->capacity = 0;
+	list->free_position = 0;
+	list->element_size = element_size;
+}
+
+void list_destruct(List *list)
+{
+	assert(list != NULL);
+	free(list->array);
+	list->array = NULL;
+	list->capacity = 0;
+	list->free_position = 0;
+}
+
+size_t list_new(List *list)
+{
+	assert(list != NULL);
+	if (at(list, list->free_position) == NULL)
 	{
-		atexit(free_pages);
-		vsp = 0;
+		size_t capacity = list->capacity ? list->capacity * 2 : size(list) * 4;
+		void *array = realloc(list->array, capacity);
+		if (!array)
+			return NONE;
+		list->array = array;
+
+		size_t iter = list->capacity;
+		list->free_position = capacity;
+		list->capacity = capacity;
+		for (; iter != capacity; iter += size(list))
+		{
+			at(list, iter)->right = list->free_position;
+			at(list, iter)->left = NONE;
+			list->free_position = iter;
+		}
 	}
-	assert(current_page != pages_count);
-	static size_t page_size = 2;
-	page_size = page_size * 3 / 2;
-
-	list_pages[current_page] = calloc(page_size * 1024,
-									  sizeof(List_iterator));
-	assert(list_pages[current_page] != NULL);
-	for (size_t i = 0; i < page_size * 1024; ++i)
-		list_insert_righter(&free_root, list_pages[current_page] + i);
-	++current_page;
-}
-
-List_iterator *list_create(uint64_t data_1, uint64_t data_2)
-{
-	if (free_root.right == &free_root)
-		prepare_page();
-	List_iterator *result = free_root.right;
-	list_erase(result);
-	result->data_1 = data_1;
-	result->data_2 = data_2;
-	result->left = result->right = result;
-	return result;
-}
-
-List_iterator *list_create_zero()
-{
-	return list_create(0, 0);
-}
-
-void list_remove(List_iterator *iter)
-{
-	assert(iter != NULL);
-	list_erase(iter);
-	list_insert_righter(&free_root, iter);
-	iter->data_1 = 0;
-	iter->data_2 = 0;
-}
-
-void list_erase(List_iterator *iter)
-{
-	assert(iter != NULL);
-	if (iter->right)
-		iter->right->left = iter->left;
-	if (iter->left)
-		iter->left->right = iter->right;
-	iter->left = NULL;
-	iter->right = NULL;
-}
-
-void list_insert_righter(List_iterator *left, List_iterator *right)
-{
-	assert(left != NULL);
-	assert(right != NULL);
-	right->left = left;
-	right->right = left->right;
-	left->right = right;
-	if (right->right)
-		right->right->left = right;
-}
-
-void list_destructor(List_iterator *root)
-{
-	assert(root != NULL);
-	while (root->right != root)
-		list_remove(root->right);
-	list_insert_righter(&free_root, root);
-}
-
-List_iterator *list_join(List_iterator *left, List_iterator *right)
-{
-	if (left->right == left)
+	Node *new = at(list, list->free_position);
+	if (new == NULL)
 	{
-		list_remove(left);
-		return right;
+		printf("ERROR\n");
+		return 0;
 	}
-	if (right->right == right)
+	list->free_position = new->right;
+	new->right = new->left = NONE;
+	return offset(list, new);
+}
+
+size_t list_right(List *list, size_t element)
+{
+	assert(list != NULL);
+	Node *node = at(list, element);
+	return node->right;
+}
+
+size_t list_left(List *list, size_t element)
+{
+	assert(list != NULL);
+	Node *node = at(list, element);
+	return node->left;
+}
+
+void list_insert_after(List *list, size_t guideline, size_t inserting)
+{
+	assert(list != NULL);
+	Node *guide = at(list, guideline);
+	Node *new = at(list, inserting);
+	new->left = offset(list, guide);
+	new->right = guide->right;
+	if (guide->right != NONE)
+		at(list, guide->right)->left = offset(list, new);
+	guide->right = offset(list, new);
+}
+
+void list_insert_before(List *list, size_t guideline, size_t inserting)
+{
+	assert(list != NULL);
+	Node *guide = at(list, guideline);
+	Node *new = at(list, inserting);
+	new->right = offset(list, guide);
+	new->left = guide->left;
+	if (guide->left != NONE)
+		at(list, guide->left)->right = offset(list, new);
+	guide->left = offset(list, new);
+}
+
+void list_erase(List *list, size_t element)
+{
+	assert(list != NULL);
+	Node *node = at(list, element);
+	at(list, node->left)->right = node->right;
+	at(list, node->right)->left = node->left;
+	node->left = NONE;
+	node->right = NONE;
+}
+
+void *list_element(List *list, Index element)
+{
+	return at(list, element) + 1;
+}
+
+void list_dump(void *stream, List *list)
+{
+	fprintf(stream, "DUMP list:\n");
+	fprintf(stream, "\tcapacity: %lu\n\toffset: %lu\n",
+			list->capacity, list->free_position);
+	for (size_t i = 0; i < list->capacity; i += size(list))
+		fprintf(stream, "   %3lu: next: %18lu; prev: %18lu\n",
+				i / size(list),
+				at(list, i)->right / size(list),
+				at(list, i)->left / size(list));
+	fprintf(stream, "\toffset:\n");
+	Node *iter = at(list, list->free_position);
+	while (iter != NULL)
 	{
-		list_remove(right);
-		return left;
+		fprintf(stream, "\t\t%lu\n", offset(list, iter) / size(list));
+		iter = at(list, iter->right);
+	}
+}
+
+void list_graph(void *stream, List *list, void (*printer)(void *, void *))
+{
+	assert(stream != NULL);
+	assert(list != NULL);
+	fprintf(stream, "digraph List\n{\n");
+
+	for (size_t i = 0; i < list->capacity; i += size(list))
+	{
+		Node *cur = at(list, i);
+		fprintf(stream, "\tnode%lu", i / size(list));
+		if (printer)
+		{
+			fprintf(stream, "[label=");
+			printer(stream, cur + 1);
+			fprintf(stream, "]\n");
+		}
+		else
+			fprintf(stream, "\n");
+		if (cur->right != NONE && cur->right != list->capacity)
+			fprintf(stream, "\tnode%lu->node%lu[label=right]\n",
+					i / size(list), cur->right / size(list));
+		if (cur->right == list->capacity)
+			fprintf(stream, "\tnode%lu->END[label=right]\n",
+					i / size(list));
+		if (cur->left != NONE)
+			fprintf(stream, "\tnode%lu->node%lu[label=left]\n",
+					i / size(list), cur->left / size(list));
 	}
 
-	List_iterator *left_end = left->left;
-	List_iterator *right_end = right->left;
-
-	left->left = right_end;
-	right_end->right = left;
-	left_end->right = right;
-	right->left = left_end;
-	list_remove(right);
-
-	return left;
+	fprintf(stream, "}\n");
 }

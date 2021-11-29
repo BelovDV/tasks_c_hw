@@ -1,55 +1,79 @@
-#include <stdint.h>
-
 #ifndef HEADER_LIST
 #define HEADER_LIST
 
-struct List_iterator;
+#include <stdlib.h>
 
-// List is List_iterator* root
-
-typedef struct List_iterator
+/**
+ * @brief List container based on index addressation
+ */
+typedef struct
 {
-	struct List_iterator *left;
-	struct List_iterator *right;
-	uint64_t data_1; // it should be enough for most cases
-	uint64_t data_2; // use only 64 bit - overhead costs are off scale
-					 // data should be movable by copying
-} List_iterator;
+	void *array;		  // defines all List memory
+	size_t capacity;	  // in bytes
+	size_t element_size;  // in bytes, doesn't include inner info
+	size_t free_position; // offset in bytes
+} List;
+
+typedef size_t Index;
+#define NONE ((Index)-1) // NULL
 
 /**
- * @brief allocate memory for node, it is new root
+ * @brief get initialized container List
+ * @return root element
+ * @exception previous values of list will be negletted
  */
-List_iterator *list_create(uint64_t data_1, uint64_t data_2);
-
-List_iterator *list_create_zero();
-
-/**
- * @brief free memory at iter
- * @exception calls erase
- */
-void list_remove(List_iterator *iter);
+void list_initialize(List *list, size_t element_size);
 
 /**
- * @brief unlink iter with neighbors
+ * @brief remove all elements and free all memory
+ * @exception destructors of elements will be negletted
  */
-void list_erase(List_iterator *iter);
+void list_destruct(List *list);
 
 /**
- * @brief insert node in list
- * 
- * @param left node from list, after those should insert
- * @param right node which to insert (should be lone)
+ * @brief get new spare element from list
  */
-void list_insert_righter(List_iterator *left, List_iterator *right);
+Index list_new(List *list);
 
 /**
- * @brief free nodes of list
+ * @brief git pointer to right from 'element' element
  */
-void list_destructor(List_iterator *root);
+Index list_right(List *list, Index element);
 
 /**
- * @brief link lists and get their union
+ * @brief git pointer to left from 'element' element
  */
-List_iterator *list_join(List_iterator *left, List_iterator *right);
+Index list_left(List *list, Index element);
+
+/**
+ * @brief insert 'inserting' after 'guideline'
+ */
+void list_insert_after(List *list, Index guideline, Index inserting);
+
+/**
+ * @brief insert 'before' after 'guideline'
+ */
+void list_insert_before(List *list, Index guideline, Index inserting);
+
+/**
+ * @brief erase element from list
+ */
+void list_erase(List *list, Index element);
+
+/**
+ * @brief get value from index
+ */
+void *list_element(List *list, Index element);
+
+/**
+ * @brief print inner info to stream
+ */
+void list_dump(void *stream, List *list);
+
+/**
+ * @brief graphviz...
+ * @param printer (stream, element) -> write label name
+ */
+void list_graph(void *stream, List *list, void (*printer)(void *, void *));
 
 #endif

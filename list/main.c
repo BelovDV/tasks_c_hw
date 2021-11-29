@@ -2,78 +2,81 @@
 
 #include <stdio.h>
 
-void printer(List_iterator *root)
+void out(List *list, size_t iterator)
 {
-	printf("print:\np\tr\n");
-	for (List_iterator *iter = root->right, *riter = root->left;
-		 iter != root;
-		 iter = iter->right, riter = riter->left)
-		printf("%lu\t%lu\n", iter->data_1, riter->data_1);
+	printf("Printer:\n");
+	while (iterator != NONE)
+	{
+		printf("\t%d\n", *(int *)list_element(list, iterator));
+		iterator = list_right(list, iterator);
+	}
+}
+
+void vsp(void *stream, void *data_)
+{
+	int *data = data_;
+	fprintf(stream, "%d", *data);
+}
+
+void graph(List *list)
+{
+	FILE *graph = fopen("../temp/list/graph", "w");
+	if (!graph)
+		return;
+	list_graph(graph, list, vsp);
+	fclose(graph);
 }
 
 void test_1()
 {
-	List_iterator *root = list_create(0, 0);
-	root->left = root;
-	root->right = root;
+	List list_value;
+	List *list = &list_value;
+	list_initialize(list, sizeof(int));
+
+	Index a[10];
+	list_dump(stdout, list);
 	for (int i = 0; i < 10; ++i)
-	{
-		List_iterator *next = list_create(i + 1, i + 1);
-		list_insert_righter(root, next);
-	}
-	printer(root);
+		a[i] = list_new(list);
+	list_dump(stdout, list);
+	for (int i = 0; i < 10; ++i)
+		*(int *)list_element(list, a[i]) = i;
+	for (int i = 0; i < 10; ++i)
+		out(list, a[i]);
 
-	printf("Insert 15 after 9\n");
-	List_iterator *iter = root->right->right;
-	list_insert_righter(iter, list_create(15, 15));
-	printer(root);
+	// 2 4
+	list_insert_after(list, a[2], a[4]);
+	list_dump(stdout, list);
+	out(list, a[2]);
 
-	printf("Erase 7\n");
-	iter = root->right->right->right->right->right;
-	//list_erase(iter);
-	list_remove(iter);
-	printer(root);
+	// 7 6 3
+	list_insert_after(list, a[7], a[6]);
+	list_insert_after(list, a[6], a[3]);
+	list_dump(stdout, list);
+	out(list, a[7]);
 
-	printf("Insert 31 after 9 and 32 after it\n");
-	iter = root->right->right;
-	list_insert_righter(iter, list_create(31, 31));
-	iter = iter->right;
-	list_insert_righter(iter, list_create(32, 32));
-	printer(root);
+	// 1 5 8 9
+	list_insert_before(list, a[9], a[8]);
+	list_insert_before(list, a[8], a[5]);
+	list_insert_before(list, a[5], a[1]);
+	list_dump(stdout, list);
+	out(list, a[1]);
 
-	list_destructor(root);
+	// 7 3
+	list_erase(list, a[6]);
+	list_dump(stdout, list);
+	out(list, a[7]);
+
+	graph(list);
+
+	list_destruct(list);
 }
 
 void test_2()
 {
-	printf("TEST 2\n");
-
-	List_iterator *left = list_create(0, 0);
-	List_iterator *right = list_create(1, 1);
-
-	printer(left);
-	printer(right);
-
-	list_insert_righter(left, list_create(10, 10));
-	list_insert_righter(right, list_create(11, 11));
-
-	left = list_join(left, right);
-	printer(left);
-
-	right = list_create(2, 2);
-	list_insert_righter(right, list_create(15, 15));
-	left = list_join(left, right);
-	printer(left);
-
-	list_destructor(left);
 }
 
 int main()
 {
-	for (int i = 0; i < 10; ++i)
-	{
-		printf("TEST 1 %d\n", i);
-		test_1();
-	}
+	test_1();
 	test_2();
 }
