@@ -18,17 +18,17 @@ typedef struct
  */
 typedef struct
 {
-	Text_string *indexation;
+	Text_string *index;
 	size_t size;
 } Text;
 
 /**
- * @brief read up to eof stream, add 0 to end (string[length])
+ * @brief read up to eof stream
  */
 Text_string text_read_stream(FILE *stream);
 
 /**
- * @brief read up to eof file, add 0 to end (string[length])
+ * @brief read up to eof file
  */
 Text_string text_read_file(const char *filename);
 
@@ -61,7 +61,9 @@ int text_write_raw_file(const char *filename, Text_string *data);
  * @brief make decomposition of text dividing it by delimiters
  * @exception in index string[length] - delimiter
  */
-Text text_decompose(Text_string *text, const char *delimiters, int skip_empty);
+Text text_decompose(const Text_string *text,
+					const char *delimiters, int skip_empty);
+// todo? text_decompose_underlines
 
 // #define FALL_ON_ERROR
 

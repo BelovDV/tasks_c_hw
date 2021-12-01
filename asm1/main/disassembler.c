@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 	Array_static_frame input = {input_.value, input_.size};
 	int result = disassemble(&input, output, log);
 	if (result)
-		printf(output, "\ndisassembling failed\n");
+		printf("\ndisassembling failed\n");
 	fclose(output);
 
 	free(input_.value);

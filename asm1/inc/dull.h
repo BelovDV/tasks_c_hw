@@ -4,6 +4,7 @@
 struct Dull_header
 {
 	char magic[4]; // dull
+	unsigned id;
 };
 
 struct Dull_section

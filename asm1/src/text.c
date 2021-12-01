@@ -64,12 +64,12 @@ Text_string text_read_file(const char *filename)
 int text_write_stream(FILE *stream, Text text, const char *del)
 {
 	debug_check(stream != NULL);
-	debug_check(text.size == 0 || text.indexation != NULL);
+	debug_check(text.size == 0 || text.index != NULL);
 
 	for (size_t i = 0; i < text.size; ++i)
 		if (fprintf(stream, "%.*s%s",
-					(int)text.indexation[i].size,
-					text.indexation[i].value,
+					(int)text.index[i].size, // int is too little...
+					text.index[i].value,
 					del) < 0)
 			return 1;
 	return 0;
@@ -78,7 +78,7 @@ int text_write_stream(FILE *stream, Text text, const char *del)
 int text_write_file(const char *filename, Text text, const char *del)
 {
 	debug_check(filename != NULL);
-	debug_check(text.size == 0 || text.indexation != NULL);
+	debug_check(text.size == 0 || text.index != NULL);
 
 	int result = 1;
 
@@ -107,38 +107,78 @@ int text_write_raw_file(const char *filename, Text_string *data)
 
 #define IS_DEL(symbol) strcnt(delimiters, symbol)
 
-Text text_decompose(Text_string *text, const char *delimiters, int skip_empty)
+Text text_decompose(const Text_string *text,
+					const char *delimiters, int skip_empty)
 {
 	debug_check(text->size == 0 || text->value != NULL);
 
-	Text result = {0, 1};
+	Text result = {0, 0};
+
 	size_t length = text->size;
 	char *string = text->value;
+	//printf("skip empty %d\n", skip_empty);
+	//printf("length %lu\n", length);
 
-	size_t previous_del = 1; // is previous symbol delimiter (bool)
+	int is_after_del = 1;
 	for (size_t iter = 0; iter < length; ++iter)
-		if (IS_DEL(string[iter]) && !(skip_empty && previous_del))
-			++result.size, previous_del = 1;
+		if (IS_DEL(string[iter]))
+		{
+			if (!is_after_del || !skip_empty)
+				result.size += 1;
+			is_after_del = 1;
+		}
 		else
-			previous_del = 0;
+			is_after_del = 0;
+	if (!is_after_del)
+		result.size += 1;
 
-	ALLOC(result.indexation, result.size)
+	//printf("result.size %lu\n", result.size);
+
+	ALLOC(result.index, result.size)
 	size_t start = 0; // position after previous delimiter (size_t)
 	size_t line = 0;  // number of line
 	for (size_t iter = 0; iter < length; ++iter)
-		if (IS_DEL(string[iter]) && (!skip_empty || start < iter))
-		{
-			result.indexation[line].size = iter - start;
-			result.indexation[line].value = string + start;
-			start = iter + 1;
-			++line;
-		}
-
-	if (!skip_empty || start < length)
 	{
-		result.indexation[line].size = length - start;
-		result.indexation[line].value = string + start;
+		//printf("%lu\t", iter);
+		//printf("%d\t", (int)string[iter]);
+		if (IS_DEL(string[iter]))
+		{
+			if (!is_after_del || !skip_empty)
+			{
+				result.index[line].size = iter - start;
+				result.index[line].value = string + start;
+				++line;
+				//printf("\tadded");
+			}
+			is_after_del = 1;
+			start = iter + 1;
+		}
+		else
+			is_after_del = 0;
+		//printf("\tis after %d\t", is_after_del);
+		//printf("line %lu\n", line);
 	}
-	debug_check(line + 1 == result.size);
+	if (!is_after_del)
+	{
+		result.index[line].size = length - start;
+		result.index[line].value = string + start;
+		start = length + 1;
+		++line;
+		//printf("\tadded");
+		//printf("\tis after %d\t", is_after_del);
+		//printf("line %lu\n", line);
+	}
+
+	//printf("\nline %lu\n", line);
+
+	debug_check(line == result.size);
+
+	for (size_t i = 0; i < result.size; ++i)
+	{
+		//printf("'%.*s'\n", (int)result.index[i].size, result.index[i].value);
+	}
+
+	//printf("done\n\n\n");
+
 	return result;
 }

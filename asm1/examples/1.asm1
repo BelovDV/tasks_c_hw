@@ -1,0 +1,23 @@
+.DATA
+	string	abc
+
+_start
+.TEXT
+:label_1
+	jmp 
+:start
+	mov		r1
+	mov		1
+	mov		[r1]
+	mov		[2*r1]
+	mov		[4*r1+5]
+	mov		[r1+4*r2+5]
+
+:start_2
+
+.DATA
+	string string
+
+:label_end
+.TEXT
+	mov		1

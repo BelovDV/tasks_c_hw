@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <execinfo.h>
+#include <unistd.h>
 
 void check_print_error_message(
 	const char *file,
@@ -12,20 +14,16 @@ void check_print_error_message(
 {
 	va_list argptr;
 	va_start(argptr, format);
-	if (fprintf(stderr,
-				"ERROR: check failed:\n"
-				"\tfile: %s\n"
-				"\tline: %d\n"
-				"\tfunc: %s\n"
-				"\tmessage: ",
-				file, line, function) < 0 ||
-		vfprintf(stderr,
-				 format,
-				 argptr))
-		fprintf(stderr, "\n");
-	{
-		abort();
-	}
+	fprintf(stderr,
+			"ERROR: check failed:\n"
+			"\tfile: %s:%d\n"
+			"\tfunc: %s\n"
+			"\t ",
+			file, line, function);
+	vfprintf(stderr,
+			 format,
+			 argptr);
+	fprintf(stderr, "\n");
 	va_end(argptr);
 }
 
