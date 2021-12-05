@@ -115,7 +115,7 @@ void executor_dump(FILE *stream, void *executor, int big)
 		fprintf(stream, "\trbp=0x%8.8lx", exe->r[e_exe_reg_rbp]);
 		fprintf(stream, "\n");
 		for (int i = 0; i < 16; ++i)
-			fprintf(stream, "%12.12lu ", exe->r[i]);
+			fprintf(stream, "%lu ", exe->r[i]);
 		fprintf(stream, "\n");
 	}
 }

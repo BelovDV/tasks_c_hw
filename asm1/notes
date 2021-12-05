@@ -14,3 +14,9 @@ call agreement have changed.
 	accepted arguments -- r0, r1, r2, r3
 	lib call arguments -- r4, r5, r6, r7
 	syscall arguments -- r0, r1, r2, r3
+
+
+
+IDEAS asm2:
+	write function, produced offset of label from current position
+	use it for call, jmp, mov, etc..

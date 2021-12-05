@@ -8,7 +8,7 @@
 
 enum
 {
-	e_max_word_length = 14,
+	e_max_word_length = 20,
 	e_max_arg_count = 3,
 	e_max_line_length = 60,
 };
@@ -34,8 +34,9 @@ typedef size_t Word;
 	FUNC(ret)                   \
 	FUNC(if)                    \
 	FUNC(push)                  \
-	FUNC(pop)\
-	FUNC(ifz)
+	FUNC(pop)                   \
+	FUNC(ifz)                   \
+	FUNC(ifl)
 
 #define LANG_INSTR_ENUM(name) e_lang_instr_##name,
 enum

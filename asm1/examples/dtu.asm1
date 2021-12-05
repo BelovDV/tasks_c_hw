@@ -1,0 +1,7 @@
+.TEXT
+_start
+	mode	9
+	libcall	read_num
+	mode	3
+	libcall	write_num
+	syscall	exit

@@ -2,6 +2,8 @@
 #include "log.h"
 #include "check.h"
 
+#include <math.h>
+
 char language_keywords[e_lang_key_count][e_max_word_length] = {
 	"___",
 	"exit", "write_num", "read_num", "write_char", "read_char", "write_str", "read_str", "sqrt"};
@@ -184,10 +186,18 @@ int i_nope(Executor *exe)
 }
 #define I_LIBCALL_WRITE_NUM(arg, type) \
 	printf(arg, *(type *)&R(4));
-#define I_LIBCALL_READ_NUM(arg, type) \
-	scanf(arg, (type *)&R(4));
+#define I_LIBCALL_READ_NUM(arg, type)                   \
+	if (scanf(arg, (type *)&R(4)))                      \
+		R(5) = 0;                                       \
+	else                                                \
+	{                                                   \
+		R(5) = 1;                                       \
+		while ((vsp = getchar()) != '\n' && vsp != EOF) \
+			;                                           \
+	}
 int i_libcall(Executor *exe)
 {
+	int vsp;
 	debug_check(&R(1) != NULL);
 	LOG("%lu", ARG(0))
 	switch (ARG(0))
@@ -206,6 +216,15 @@ int i_libcall(Executor *exe)
 		printf("%*s", (int)sz, str);
 		break;
 	}
+	case e_lang_key_sqrt:
+		// todo... check, add return value was_error
+		if ((RF & e_exe_rf_mask_mode) == 9)
+			*(double *)&R(4) = sqrt(*(double *)&R(4));
+		else if ((RF & e_exe_rf_mask_mode) == 8)
+			*(double *)&R(4) = sqrtf(*(float *)&R(4));
+		else
+			CHECK_RETURN(0, "sqrt failed")
+		break;
 	default:
 		CHECK_RETURN(0, "libcall: wrong keyword")
 	}
@@ -314,9 +333,52 @@ int i_pop(Executor *exe)
 }
 int i_ifz(Executor *exe)
 {
-	LOG("%lu", ARG(0))
+	// LOG("%lu", ARG(0))
 	if (ARG(0) != 0)
 		RF |= e_exe_rf_skip;
-	LOG("%lu", RF)
+	// LOG("%lu", RF)
+	return 0;
+}
+#define I_IFL(type)           \
+	if (*(type *)&ARG(0) < 0) \
+		RF |= e_exe_rf_skip;
+int i_ifl(Executor *exe)
+{
+	// LOG("%lu", ARG(0))
+	switch (exe->r[e_exe_reg_rf])
+	{
+	case 0:
+	case 1:
+	case 2:
+	case 3:
+		break;
+	case 4:
+		if (!(*(char *)&ARG(0) < 0))
+			RF |= e_exe_rf_skip;
+		break;
+	case 5:
+		if (!(*(short *)&ARG(0) < 0))
+			RF |= e_exe_rf_skip;
+		break;
+	case 6:
+		if (!(*(int *)&ARG(0) < 0))
+			RF |= e_exe_rf_skip;
+		break;
+	case 7:
+		if (!(*(long *)&ARG(0) < 0))
+			RF |= e_exe_rf_skip;
+		break;
+	case 8:
+		if (!(*(float *)&ARG(0) < 0))
+			RF |= e_exe_rf_skip;
+		break;
+	case 9:
+		if (!(*(double *)&ARG(0) < 0))
+			RF |= e_exe_rf_skip;
+		break;
+	default:
+		CHECK_RETURN(0, "wrong num mode")
+	}
+	// LOG("%lu", RF)
 	return 0;
 }
