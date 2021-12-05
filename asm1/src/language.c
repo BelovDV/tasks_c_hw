@@ -184,6 +184,8 @@ int i_nope(Executor *exe)
 }
 #define I_LIBCALL_WRITE_NUM(arg, type) \
 	printf(arg, *(type *)&R(1));
+#define I_LIBCALL_READ_NUM(arg, type) \
+	scanf(arg, (type *)&R(0));
 int i_libcall(Executor *exe)
 {
 	debug_check(&R(1) != NULL);
@@ -192,6 +194,9 @@ int i_libcall(Executor *exe)
 	{
 	case e_lang_key_write_num:
 		FOR_MODE_SWITCH_PRINT(I_LIBCALL_WRITE_NUM)
+		break;
+	case e_lang_key_read_num:
+		FOR_MODE_SWITCH_PRINT(I_LIBCALL_READ_NUM)
 		break;
 	case e_lang_key_write_str: // string storage defined(
 	{
@@ -297,5 +302,13 @@ int i_push(Executor *exe)
 int i_pop(Executor *exe)
 {
 	FOR_MODE_SWITCH(I_POP)
+	return 0;
+}
+int i_ifz(Executor *exe)
+{
+	LOG("%lu", ARG(0))
+	if (ARG(0) != 0)
+		RF |= e_exe_rf_skip;
+	LOG("%lu", RF)
 	return 0;
 }

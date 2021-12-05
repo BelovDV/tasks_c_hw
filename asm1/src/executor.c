@@ -77,9 +77,15 @@ static int process(Executor *exe)
 		size_t sz = coder_decode(CODE, &exe->instr);
 		CHECK_RETURN(sz != 0 && exe->instr.type == e_line_instr,
 					 "cannot decode instruction")
+#ifdef EXTRA_LOG
+		fprintf(exe->log, "%s\n", mnemonics[exe->instr.instr.id]);
+#endif
 		LOG("%s", mnemonics[exe->instr.instr.id])
 		RIP += sz;
-		CHECK_RETURN(!language_execute(exe), "cannot execute instr")
+		if (!(exe->r[e_exe_reg_rf] & e_exe_rf_skip))
+			CHECK_RETURN(!language_execute(exe), "cannot execute instr")
+		else
+			exe->r[e_exe_reg_rf] &= ~e_exe_rf_skip;
 	}
 	LOG_OUT
 	return RF & e_exe_rf_error;
@@ -103,7 +109,11 @@ void executor_dump(FILE *stream, void *executor, int big)
 	}
 	else
 	{
-		fprintf(stream, "Exe: rip=0x%12.12lx\n", exe->r[e_exe_reg_rip]);
+		fprintf(stream, "Exe: rip=0x%12.12lx", exe->r[e_exe_reg_rip]);
+		fprintf(stream, "\trf=0x%8.8lx", exe->r[e_exe_reg_rf]);
+		fprintf(stream, "\trsp=0x%8.8lx", exe->r[e_exe_reg_rsp]);
+		fprintf(stream, "\trbp=0x%8.8lx", exe->r[e_exe_reg_rbp]);
+		fprintf(stream, "\n");
 		for (int i = 0; i < 16; ++i)
 			fprintf(stream, "%12.12lu ", exe->r[i]);
 		fprintf(stream, "\n");

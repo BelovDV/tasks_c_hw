@@ -34,7 +34,8 @@ typedef size_t Word;
 	FUNC(ret)                   \
 	FUNC(if)                    \
 	FUNC(push)                  \
-	FUNC(pop)
+	FUNC(pop)\
+	FUNC(ifz)
 
 #define LANG_INSTR_ENUM(name) e_lang_instr_##name,
 enum
