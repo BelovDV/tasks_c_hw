@@ -6,3 +6,11 @@ it's bad, but because of architecture problem it isn't possible
 it's bad, but because of architecture problem it isn't possible
 	to use data you couldn't use labels
 	it's required to pass offset with registers
+it's bad, but you can't easily change mode for some time
+	should be done
+
+call agreement have changed.
+	passed arguments -- r4, r5, r6, r7
+	accepted arguments -- r0, r1, r2, r3
+	lib call arguments -- r4, r5, r6, r7
+	syscall arguments -- r0, r1, r2, r3

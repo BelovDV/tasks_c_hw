@@ -183,9 +183,9 @@ int i_nope(Executor *exe)
 	return 0;
 }
 #define I_LIBCALL_WRITE_NUM(arg, type) \
-	printf(arg, *(type *)&R(1));
+	printf(arg, *(type *)&R(4));
 #define I_LIBCALL_READ_NUM(arg, type) \
-	scanf(arg, (type *)&R(0));
+	scanf(arg, (type *)&R(4));
 int i_libcall(Executor *exe)
 {
 	debug_check(&R(1) != NULL);
@@ -201,8 +201,8 @@ int i_libcall(Executor *exe)
 	case e_lang_key_write_str: // string storage defined(
 	{
 		char *mem = exe->memory;
-		char sz = mem[RIP + R(1)];
-		char *str = mem + RIP + R(1) + 1;
+		char sz = mem[RIP + R(4)];
+		char *str = mem + RIP + R(4) + 1;
 		printf("%*s", (int)sz, str);
 		break;
 	}
@@ -241,24 +241,32 @@ int i_mode(Executor *exe)
 	RF |= e_exe_rf_mask_mode & exe->instr.instr.argv[0].c;
 	return 0;
 }
+#define I_SUB(type) \
+	*(type *)(&ARG(0)) -= *(type *)(&ARG(1));
 int i_sub(Executor *exe)
 {
-	(void)exe;
+	FOR_MODE_SWITCH(I_SUB)
 	return 0;
 }
+#define I_DIV(type) \
+	*(type *)(&ARG(0)) /= *(type *)(&ARG(1));
 int i_div(Executor *exe)
 {
-	(void)exe;
+	FOR_MODE_SWITCH(I_DIV)
 	return 0;
 }
+#define I_ADD(type) \
+	*(type *)(&ARG(0)) += *(type *)(&ARG(1));
 int i_add(Executor *exe)
 {
-	(void)exe;
+	FOR_MODE_SWITCH(I_ADD)
 	return 0;
 }
+#define I_MUL(type) \
+	*(type *)(&ARG(0)) *= *(type *)(&ARG(1));
 int i_mul(Executor *exe)
 {
-	(void)exe;
+	FOR_MODE_SWITCH(I_MUL)
 	return 0;
 }
 int i_jmp(Executor *exe)
