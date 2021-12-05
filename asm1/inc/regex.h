@@ -2,11 +2,12 @@
 
 special characters
 '?' next is unnecessary, set next result to ptr to it if finded
+'!' next is necessary, set next result to ptr to it if finded
 ' ' may be one of delimiters (passed separately)
 '\t' should be one of delimiters (passed separately)
 '$' next is common symbol
-'#' next is number of rule (1-9) (rule 0 is main)
-'@' boards of inner definition of rule
+// '#' next is number of rule (1-9) (rule 0 is main)
+// '@' boards of inner definition of rule
 '*' greed repeating next
 '[]' set of elements
 

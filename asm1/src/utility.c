@@ -55,9 +55,8 @@ void print_raw_data(FILE *stream, const void *data_, size_t size)
 {
 	debug_check(data_ != NULL);
 	const uint8_t *data = data_;
-	for (size_t i = 0; i < (size + 15) / 16; ++i)
-		for (size_t j = 0; i * 16 + j < size; ++j)
-			fprintf(stream, "%02hhx ", data[i * 16 + j]);
+	for (size_t i = 0; i < size; ++i)
+		fprintf(stream, "%02hhx ", data[i]);
 }
 
 void print_raw_data_pretty(
@@ -132,6 +131,12 @@ int print_char(FILE *stream, char *symbol_)
 	if (*symbol == ' ')
 	{
 		fprintf(stream, "' '");
+		return 1;
+	}
+	if (*symbol == '\0')
+	{
+
+		fprintf(stream, "'\\0'");
 		return 1;
 	}
 	fprintf(stream, "%d", (int)*symbol);

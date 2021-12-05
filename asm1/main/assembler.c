@@ -33,6 +33,7 @@ int main(int argc, char **argv)
 		text_write_raw_file(argv[2], (Text_string *)&result);
 
 	free(input.value);
+	free(result.array);
 	fclose(log);
 	return was_error;
 }

@@ -1,11 +1,26 @@
+/*
+
+	Macroces for quick creating pretty log file
+	LOG_IN - log function name and increase tab
+	LOG_OUT - decrease tab
+	LOG - print name of var and its value by format
+	LOG_F - print name of var and use func for printing value
+
+	TODO:
+	Level of priority - to increase/decrease log file without
+		commenting huge amount of strings
+	Somehow reduce syntax - remove necessary of specifiing format
+	Use more comfortable and less errorable syntax for printing functions
+	Create vscode extension for collapsing or minimizing lines in file
+	Increase possibilities of passing format and customizing line length
+
+*/
+
 #ifndef HEADER_LOG
 #define HEADER_LOG
 
-#ifndef EXTRA_LOG
-#define EXTRA_LOG
-#endif
-
 #ifdef EXTRA_LOG
+#define LOG_MAX_STRING_NUMBER 1024
 #ifndef LOG_FILE
 #define LOG_FILE "log"
 #endif

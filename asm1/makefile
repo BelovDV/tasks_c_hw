@@ -1,7 +1,7 @@
 project = asm1
-program = 1
+program = 5
 
-args = src/*.c -g -Wall -Wextra -fsanitize=address,leak -I inc -D FALL_ON_ERROR -D LOG_FILE='"../temp/asm1/data/log"' -D EXTRA_LOG -rdynamic -lm
+args = src/*.c -g -Wall -Wextra -fsanitize=address,leak -I inc -D FALL_ON_ERROR -D LOG_FILE='"../temp/asm1/data/log"' -D EXTRA_LOG -rdynamic -D SHUTDOWN_REGEX -lm
 # lm - temporal...
 bin=../temp/asm1/bin
 data=../temp/asm1/data
@@ -26,7 +26,7 @@ run_asm:
 run_disasm_asm:
 	@echo
 	@echo run_disasm_asm
-	rm -f ${bin}/${program}.dull
+	rm -f ${bin}/${program}d.dull
 	${bin}/assembler ${data}/${program}d.asm1 ${bin}/${program}d.dull ${data}/log_assembler_d
 
 run_disasm:
@@ -57,7 +57,7 @@ mkdir:
 test: clear
 	@echo
 	@echo test
-	gcc -o ${bin}/test main/test.c ${args}
+	gcc -o ${bin}/test main/test.c src/*.c -g -Wall -Wextra -fsanitize=address,leak -I inc -D FALL_ON_ERROR -D LOG_FILE='"../temp/asm1/data/log"' -D EXTRA_LOG -rdynamic
 	${bin}/test
 
 clear:

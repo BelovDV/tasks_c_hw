@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifndef HEADER_LANGUAGE
 #define HEADER_LANGUAGE
@@ -31,7 +32,9 @@ typedef size_t Word;
 	FUNC(jmp)                   \
 	FUNC(call)                  \
 	FUNC(ret)                   \
-	FUNC(if)
+	FUNC(if)                    \
+	FUNC(push)                  \
+	FUNC(pop)
 
 #define LANG_INSTR_ENUM(name) e_lang_instr_##name,
 enum
@@ -47,7 +50,7 @@ enum
 
 enum
 {
-	e_lang_key_error = -1,
+	e_lang_key_error,
 
 	e_lang_key_exit,
 	e_lang_key_write_num,
@@ -101,11 +104,12 @@ enum
 
 typedef struct
 {
-	char mem; // is memory
-	char rx;  // e_exe_reg_...
-	char k;	  // (0) 1 2 4 8
-	char ry;  // e_exe_reg_...
-	Word c;	  // uint64_t
+	char mem;  // is memory
+	char rx;   // e_exe_reg_...
+	char k;	   // (0) 1 2 4 8
+	char ry;   // e_exe_reg_...
+	char is_c; // is c
+	Word c;	   // uint64_t
 } Argument;
 
 typedef struct
@@ -175,8 +179,12 @@ enum Registers
 enum
 {
 	e_exe_rf_mask_mode = 0xf, // e_lang_mode_...
+	e_exe_rf_skip = 0x10,	  // after fallen if
+	e_exe_rf_end = 0x20,	  // correct completion of program
+	e_exe_rf_error = 0x40,	  // incorrect completion of program
 };
 
+/*
 enum
 {
 	e_exe_error_nothing,				 // nothing error
@@ -196,23 +204,25 @@ enum
 	e_exe_flag_exit = 0x0200,	   // program complitted
 	e_exe_flag_terminate = 0x0400, // program terminated - now, error occurred
 };
+*/
 
 typedef struct
 {
 	// rip changed before instruction execution
 	void *memory; // fixed size, fixed division
 	Word shift;
-	Word condition; // errors and flags
 	Word r[e_exe_reg_count];
 
-	Instruction instr;
+	Line instr;
 	Word constant[e_max_arg_count]; // if arg constant, it is here
-	Word v_ptr[e_max_arg_count];	// pointer to arg
+	Word *v_ptr[e_max_arg_count];	// pointer to arg
+
+	FILE *log;
 } Executor;
 
 // ===== // DESCRIPTION // ===== //
 
-extern char language_mnemonics[e_lang_instr_count][e_max_word_length];
+extern char mnemonics[e_lang_instr_count][e_max_word_length];
 extern char language_keywords[e_lang_key_count][e_max_word_length];
 
 int language_execute(Executor *exe);

@@ -1,3 +1,10 @@
+/*
+
+	Usefull definitions i wanted add several times and created at last
+	I'd like to see many of these in standart library
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -15,7 +22,7 @@ size_t hash(const void *data, size_t size);
 size_t strcnt(const char *str, char symbol);
 
 /**
- * @brief count amount of symbol in str (with length) 
+ * @brief count amount of symbol in str (with length)
  */
 size_t strncnt(const char *str, char symbol, size_t length);
 
@@ -36,7 +43,7 @@ void print_raw_data(FILE *stream, const void *data, size_t size);
 
 /**
  * @brief print data in raw appearance to stream
- * 
+ *
  * @param prefix will be written at the begining of all lines if nonzero
  * otherwise there will be one line
  * @param start_address there will be written address of first byte of each line

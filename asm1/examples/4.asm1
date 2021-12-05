@@ -1,0 +1,16 @@
+.TEXT
+:write_line
+	mode	4
+	mov		r1		10
+	libcall	write_num
+	ret
+:test_jmp
+	jmp		1		write_line
+:test_call
+	call	1		write_line
+	ret
+_start
+	call	1		test_jmp
+	call	1		write_line
+	call	1		test_call
+	syscall	exit

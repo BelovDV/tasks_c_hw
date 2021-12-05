@@ -1,0 +1,25 @@
+ r a
+ t a		z
+ t b		z
+ 
+ r ab
+ t a		z
+ t b		z
+ t ab		z
+ 
+ r a|b
+ t a		z
+ t b		z
+ t c		z
+ t ab		z
+ 
+ r ab|bc
+ t a		z
+ t b		z
+ t c		z
+ t ab		z
+ t bc		z
+ t ac		z
+
+
+ r(1[0-1]|[0-9]|bp|sp|f)

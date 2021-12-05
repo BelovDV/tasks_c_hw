@@ -1,23 +1,27 @@
 .DATA
 	string	abc
-
-_start
 .TEXT
+	mov		1048610 1048610
+:front
+	jmp		1	label_1
 :label_1
-	jmp 
+_start
+	jmp		1	start
 :start
+	jmp		1	label
 	mov		r1
+:label
 	mov		1
 	mov		[r1]
 	mov		[2*r1]
 	mov		[4*r1+5]
+	jmp		1	front
+	syscall	exit
 	mov		[r1+4*r2+5]
-
+	jmp		1	label
 :start_2
-
 .DATA
 	string string
-
 :label_end
 .TEXT
 	mov		1

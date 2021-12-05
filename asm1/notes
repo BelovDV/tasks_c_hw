@@ -1,1 +1,8 @@
 if not stated opposite - return int is return "was error"
+
+it's bad, but because of architecture problem it isn't possible
+	to use 0 constant in asm1
+	if you want to write symbol use 4 instead
+it's bad, but because of architecture problem it isn't possible
+	to use data you couldn't use labels
+	it's required to pass offset with registers

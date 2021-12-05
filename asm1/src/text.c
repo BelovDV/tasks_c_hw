@@ -99,7 +99,7 @@ int text_write_raw_file(const char *filename, Text_string *data)
 	int result = 1;
 	FOPEN(file, filename, "w")
 
-	result = fprintf(file, "%.*s", (int)data->size, data->value) >= 0;
+	result = !(fwrite(data->value, data->size, 1, file) > 0);
 	fclose(file);
 
 	return result;
@@ -116,8 +116,8 @@ Text text_decompose(const Text_string *text,
 
 	size_t length = text->size;
 	char *string = text->value;
-	//printf("skip empty %d\n", skip_empty);
-	//printf("length %lu\n", length);
+	// printf("skip empty %d\n", skip_empty);
+	// printf("length %lu\n", length);
 
 	int is_after_del = 1;
 	for (size_t iter = 0; iter < length; ++iter)
@@ -132,15 +132,15 @@ Text text_decompose(const Text_string *text,
 	if (!is_after_del)
 		result.size += 1;
 
-	//printf("result.size %lu\n", result.size);
+	// printf("result.size %lu\n", result.size);
 
 	ALLOC(result.index, result.size)
 	size_t start = 0; // position after previous delimiter (size_t)
 	size_t line = 0;  // number of line
 	for (size_t iter = 0; iter < length; ++iter)
 	{
-		//printf("%lu\t", iter);
-		//printf("%d\t", (int)string[iter]);
+		// printf("%lu\t", iter);
+		// printf("%d\t", (int)string[iter]);
 		if (IS_DEL(string[iter]))
 		{
 			if (!is_after_del || !skip_empty)
@@ -148,15 +148,15 @@ Text text_decompose(const Text_string *text,
 				result.index[line].size = iter - start;
 				result.index[line].value = string + start;
 				++line;
-				//printf("\tadded");
+				// printf("\tadded");
 			}
 			is_after_del = 1;
 			start = iter + 1;
 		}
 		else
 			is_after_del = 0;
-		//printf("\tis after %d\t", is_after_del);
-		//printf("line %lu\n", line);
+		// printf("\tis after %d\t", is_after_del);
+		// printf("line %lu\n", line);
 	}
 	if (!is_after_del)
 	{
@@ -164,21 +164,21 @@ Text text_decompose(const Text_string *text,
 		result.index[line].value = string + start;
 		start = length + 1;
 		++line;
-		//printf("\tadded");
-		//printf("\tis after %d\t", is_after_del);
-		//printf("line %lu\n", line);
+		// printf("\tadded");
+		// printf("\tis after %d\t", is_after_del);
+		// printf("line %lu\n", line);
 	}
 
-	//printf("\nline %lu\n", line);
+	// printf("\nline %lu\n", line);
 
 	debug_check(line == result.size);
 
 	for (size_t i = 0; i < result.size; ++i)
 	{
-		//printf("'%.*s'\n", (int)result.index[i].size, result.index[i].value);
+		// printf("'%.*s'\n", (int)result.index[i].size, result.index[i].value);
 	}
 
-	//printf("done\n\n\n");
+	// printf("done\n\n\n");
 
 	return result;
 }

@@ -31,16 +31,30 @@ typedef struct
 		}                                \
 	}
 
+#ifdef SHUTDOWN_REGEX
+#undef LOG
+#undef LOG_IN
+#undef LOG_OUT
+#undef LOG_F
+#define LOG_IN
+#define LOG_OUT
+#define LOG(format, var)
+#define LOG_F(func, var)
+#else
 static void printer_char(void *stream, void *symbol)
 {
-	LOG("%p", symbol)
 	print_char(stream, symbol);
 }
-#define IN                     \
-	LOG_IN                     \
-	LOG_F(printer_char, RULE); \
-	LOG_F(printer_char, ITER); \
+#endif
+
+#define IN               \
+	LOG_IN               \
+	LOG("'%.10s'", RULE) \
+	LOG("'%.10s'", ITER) \
 	int is_error = 0;
+// LOG_F(printer_char, *RULE);
+// LOG_F(printer_char, *ITER);
+
 #define OUT             \
 	LOG_OUT             \
 	LOG("%d", is_error) \
@@ -54,17 +68,18 @@ enum
 
 static int line(Regex *regex);		 // binary operators: '|'
 static int expression(Regex *regex); // choose single
+static int repeat(Regex *regex);	 // *
 static int brackets(Regex *regex);	 // ()
 static int range(Regex *regex);		 // []
 static int quest(Regex *regex);		 // ?
-static int escape(Regex *regex);	 // $
-static int symbol(Regex *regex);	 // other
+static int symbol(Regex *regex);	 // symbols (or after $)
 
 int regex(Regex *regex)
 {
 	LOG_IN
 	LOG("%p", RULE)
 	LOG("%p", ITER)
+	LOG("%p", regex->result)
 	LOG("%s", RULE)
 	LOG("%s", ITER)
 	regex->flags = 0;
@@ -76,41 +91,63 @@ int regex(Regex *regex)
 static int line(Regex *regex)
 {
 	IN;
-	LOG("%p", RULE)
+	char *start = ITER;
+	char *after_first_true = NULL;
 	while (1)
 	{
-		if (*RULE == '\0' || *RULE == ')')
+		char *expression_start = ITER;
+		while (*RULE != '|' && *RULE != ')' && *RULE != '\0')
+			is_error |= expression(regex);
+		if (!is_error && !after_first_true)
+			after_first_true = ITER, FLAG |= is_true;
+		else
+			ITER = expression_start;
+		if (*RULE != '|')
 			break;
-		if (*RULE == '|')
-		{
-			if (is_error)
-				is_error = 0;
-			else
-				FLAG |= is_true;
-			++RULE;
-		}
 		if (is_error)
-			break;
-		is_error = expression(regex);
+			is_error = 0;
+		++RULE;
+		ITER = start;
+		LOG("%d", (int)(after_first_true != NULL))
 	}
+	FLAG &= ~is_true;
+	if (after_first_true)
+		ITER = after_first_true, is_error = 0;
 	OUT
 }
 
 static int expression(Regex *regex)
 {
 	IN;
-	CHECK(*ITER != '\0')
-	CHECK(*RULE != '\0')
-	if (*RULE == '(')
-		is_error = brackets(regex);
-	else if (*RULE == '?')
+	// LOG("%p", RULE)
+	// LOG("%p", ITER)
+	if (*RULE == '?' || *RULE == '!')
 		is_error = quest(regex);
+	else if (*RULE == '*')
+		is_error = repeat(regex);
+	else if (*RULE == '(')
+		is_error = brackets(regex);
 	else if (*RULE == '[')
 		is_error = range(regex);
-	else if (*ITER == '$')
-		is_error = escape(regex);
+	else if (*RULE == ']' || *RULE == ')')
+		is_error = 1;
+	else if (*RULE == '$')
+		++RULE, is_error = symbol(regex);
 	else
 		is_error = symbol(regex);
+	OUT
+}
+
+static int repeat(Regex *regex)
+{
+	IN;
+	// if (*RULE != '*') return 1;
+	++RULE;
+	char *expr_start = ITER;
+	char *rule_start = RULE;
+	while (!expression(regex))
+		expr_start = ITER, RULE = rule_start;
+	ITER = expr_start; // return to first wrong
 	OUT
 }
 
@@ -127,12 +164,19 @@ static int brackets(Regex *regex)
 
 static int range(Regex *regex)
 {
-	IN;
 	// CHECK(RULE[0] == '[')
-	CHECK(RULE[1] != '\0' && RULE[2] != '\0' && RULE[1] >= RULE[2])
-	CHECK(RULE[3] == ']')
-	is_error = RULE[1] <= *ITER && *ITER <= RULE[2];
-	RULE += 4;
+	IN;
+	// LOG_F(printer_char, RULE[0])
+	// LOG_F(printer_char, RULE[1])
+	// LOG_F(printer_char, RULE[2])
+	// LOG_F(printer_char, RULE[3])
+	// LOG_F(printer_char, RULE[4])
+	LOG_F(printer_char, *ITER)
+	CHECK(RULE[1] != '\0' && RULE[2] != '\0' && RULE[3] != '\0')
+	CHECK(RULE[1] < RULE[3] && RULE[2] == '-')
+	CHECK(RULE[4] == ']')
+	is_error = RULE[1] > *ITER || *ITER > RULE[3];
+	RULE += 5;
 	ITER += 1;
 	OUT
 }
@@ -140,23 +184,33 @@ static int range(Regex *regex)
 static int quest(Regex *regex)
 {
 	IN;
-	CHECK(0)
-	OUT
-}
-
-static int escape(Regex *regex)
-{
-	IN;
+	int require = *RULE == '!';
+	char *start = ITER;
 	++RULE;
-	is_error = symbol(regex);
+	char **result = regex->result;
+	regex->result += 1;
+	is_error = expression(regex);
+	// LOG("%p", regex->result)
+	// LOG("%p", *regex->result)
+	////LOG("%d", FLAG & is_true)
+	if ((FLAG & is_true) || is_error)
+		*(result) = NULL;
+	else
+		*(result) = start;
+	// LOG("%p", regex->result)
+	LOG("%p", *result)
+	if (!require)
+		is_error = 0;
 	OUT
 }
 
 static int symbol(Regex *regex)
 {
 	IN;
-	is_error = (*RULE == *ITER);
+	if (*RULE == *ITER)
+		++ITER;
+	else
+		is_error = 1;
 	++RULE;
-	++ITER;
 	OUT
 }
