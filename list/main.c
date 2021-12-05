@@ -2,13 +2,12 @@
 
 #include <stdio.h>
 
-void out(List *list, size_t iterator)
+void out(List *list)
 {
 	printf("Printer:\n");
-	while (iterator != NONE)
+	for (size_t iter = list->front; iter != NONE; iter = list_right(list, iter))
 	{
-		printf("\t%d\n", *(int *)list_element(list, iterator));
-		iterator = list_right(list, iterator);
+		printf("\t[%3.3lu]: %d\n", iter, *(int *)list_element(list, iter));
 	}
 }
 
@@ -33,50 +32,31 @@ void test_1()
 	List *list = &list_value;
 	list_initialize(list, sizeof(int));
 
-	Index a[10];
 	list_dump(stdout, list);
+	out(list);
+
+	// 0 1 2 3 4 5 6 7 8 9
 	for (int i = 0; i < 10; ++i)
-		a[i] = list_new(list);
-	list_dump(stdout, list);
-	for (int i = 0; i < 10; ++i)
-		*(int *)list_element(list, a[i]) = i;
-	for (int i = 0; i < 10; ++i)
-		out(list, a[i]);
+	{
+		*(int *)list_element(list, list_push_back(list)) = i;
+		// list_dump(stderr, list);
+	}
+	out(list);
 
-	// 2 4
-	list_insert_after(list, a[2], a[4]);
-	list_dump(stdout, list);
-	out(list, a[2]);
+	// 0 1 2 3 4 5 6 7 9
+	list_erase(list, list_left(list, list->back));
+	out(list);
 
-	// 7 6 3
-	list_insert_after(list, a[7], a[6]);
-	list_insert_after(list, a[6], a[3]);
-	list_dump(stdout, list);
-	out(list, a[7]);
+	list_at(list, 0);
+	out(list);
 
-	// 1 5 8 9
-	list_insert_before(list, a[9], a[8]);
-	list_insert_before(list, a[8], a[5]);
-	list_insert_before(list, a[5], a[1]);
 	list_dump(stdout, list);
-	out(list, a[1]);
-
-	// 7 3
-	list_erase(list, a[6]);
-	list_dump(stdout, list);
-	out(list, a[7]);
-
 	graph(list);
 
 	list_destruct(list);
 }
 
-void test_2()
-{
-}
-
 int main()
 {
 	test_1();
-	test_2();
 }

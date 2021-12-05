@@ -1,4 +1,4 @@
-args = *.c -g -Wall -Wextra -fsanitize=address,leak
+args = *.c -g -Wall -Wextra -fsanitize=address,leak -O0
 
 all: bash_clear list run
 	dot -Tpng ../temp/list/graph -o ../temp/list/graph.png
