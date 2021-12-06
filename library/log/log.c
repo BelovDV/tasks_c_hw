@@ -6,6 +6,8 @@
 
 #ifdef EXTRA_LOG
 
+#define LOG_MAX_STRING_NUMBER 4096
+
 static int depth = 0;
 static FILE *log_file = NULL;
 

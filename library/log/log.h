@@ -17,7 +17,6 @@
 #define HEADER_LOG
 
 #ifdef EXTRA_LOG
-#define LOG_MAX_STRING_NUMBER 1024
 #ifndef LOG_FILE
 #define LOG_FILE "log"
 #endif
@@ -52,5 +51,14 @@ void log_func(const char *file, int line,
 #define LOG(format, var)
 #define LOG_F(func, var)
 #endif
+
+#define CHECK_RETURN(condition, value) \
+	{                                  \
+		if (!(condition))              \
+		{                              \
+			LOG_OUT                    \
+			return value;              \
+		}                              \
+	}
 
 #endif
