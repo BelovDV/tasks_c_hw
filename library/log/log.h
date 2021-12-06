@@ -52,13 +52,14 @@ void log_func(const char *file, int line,
 #define LOG_F(func, var)
 #endif
 
-#define CHECK_RETURN(condition, value) \
-	{                                  \
-		if (!(condition))              \
-		{                              \
-			LOG_OUT                    \
-			return value;              \
-		}                              \
+#define CHECK_RETURN(condition, value)  \
+	{                                   \
+		if (!(condition))               \
+		{                               \
+			LOG("%s failed", condition) \
+			LOG_OUT                     \
+			return value;               \
+		}                               \
 	}
 
 #endif
