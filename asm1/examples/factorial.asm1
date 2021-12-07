@@ -1,0 +1,41 @@
+# read uint64_t number, find its factorial and print it
+
+.TEXT
+:new_line # print new line
+	mov		r1		rf
+	mode	4
+	mov		r4		10
+	libcall	write_num
+	mov		rf		r1
+	ret
+
+_start
+	mode	3
+	libcall	read_num
+	call	1	factorial
+	call	1	new_line
+	libcall	write_num
+	call	1	new_line
+	syscall	exit
+
+:factorial # x -> x!
+# check, isn't it last call
+	ifz		r0
+	jmp		1	factorial_exit
+# prepare argument for call
+	mov		r4		r0
+	sub		r4		1
+# save argument called with
+	push	r0		
+	call	1	factorial
+	pop		r0
+# x *= (x-1)!
+	mul		r0		r4
+	# mov		r4		r0
+	# libcall	write_num
+	# call	1	new_line
+	ret
+
+:factorial_exit
+	mov		r0		1
+	ret

@@ -1,3 +1,5 @@
+# solve quadratic equation
+
 .TEXT
 :mes_give
 	mov		r4		2
@@ -45,7 +47,7 @@
 	jmp		1	vsp_1
 :find_D # a,b,c -> D
 	mul		r0		r2
-	mul		r0		4616189618054758400 # unfortunatelly, it's only for double
+	mul		r0		4616189618054758400 
 	mov		r2		r0
 	mov		r0		r1
 	mul		r0		r1
@@ -80,7 +82,7 @@ _start # START
 # process roots
 	sub		r0		r0
 	sub		r0		r2
-	mul		r1		4611686018427387904 # unfortunatelly, it's only for double
+	mul		r1		4611686018427387904 
 	div		r0		r1 # -b/2a
 	mov		r7		r0
 	div		r4		r1 # d/2a
@@ -116,7 +118,7 @@ _start # START
 	sub		r0		r0
 	sub		r0		r2
 	div		r0		r1
-	div		r0		4611686018427387904 # unfortunatelly, it's only for double
+	div		r0		4611686018427387904 
 	mov		r4		r0
 	libcall	write_num
 	call 	2	new_line

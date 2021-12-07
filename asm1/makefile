@@ -1,5 +1,5 @@
 project = asm1
-program = 8
+program = factorial
 
 args = src/*.c -g -Wall -Wextra -fsanitize=address,leak -I inc -D FALL_ON_ERROR -D LOG_FILE='"../temp/asm1/data/log"' -D EXTRA_LOG -rdynamic -D SHUTDOWN_REGEX -lm
 # lm - temporal...
