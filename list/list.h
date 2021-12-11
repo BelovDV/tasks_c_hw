@@ -1,7 +1,7 @@
 #ifndef HEADER_LIST
 #define HEADER_LIST
 
-#include <stdlib.h>
+#include <stddef.h>
 
 typedef size_t Index;
 #define NONE ((Index)-1) // NULL
