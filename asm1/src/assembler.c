@@ -174,7 +174,7 @@ static int decode(Assembler *asm1)
             is_error |= decode_label(asm1);
         else if (start == '_')
             is_error |= decode_start(asm1);
-        else if (start == '\t')
+        else if (start == '\t' || start == ' ')
         {
             if (asm1->section == e_section_text)
                 is_error |= decode_instr(asm1);

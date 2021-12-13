@@ -1,7 +1,15 @@
+Examples os asm1 syntax
+===
 This folder contains simple examples of code on asm1 language.
 
-factorial - takes uint64_t number from standard input and prints its factorial.
+### Launching
+Change `program` argument in makefile for choosing name of example.
 
-quadratic - takes double numbers a, b and c for equation ax^2+bx+c=0, and prints it's roots
+### Factorial
+Takes uint64_t number from standard input and prints its factorial.
 
-dtu - takes double value, reinterprets it as unsigned long and prints it
+### Quadratic
+Takes double numbers a, b and c for equation ax^2+bx+c=0, and prints it's roots.
+
+### DTU
+Takes double value, reinterprets it as unsigned long and prints it.
