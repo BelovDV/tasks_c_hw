@@ -6,7 +6,7 @@
 
 /**
  * @brief assemble program
- * 
+ *
  * @param text of program
  * @param bin there to write result
  * @param log there to write log

@@ -6,7 +6,7 @@
 
 /**
  * @brief assemble program
- * 
+ *
  * @param bin binary .dull program
  * @param dest there to write disasm of binary
  * @param log there to write log

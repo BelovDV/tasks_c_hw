@@ -27,12 +27,12 @@ in my point of view, '?' is insight as i never heard of it before
 
 typedef struct
 {
-	char *rule;				// pointer to main rule
-	char **additional_rule; // pointer to set of rules
-	char **result;			// pointer to dest of '?', should be allocated
-	char *considered;		// string which one to process
+    char *rule;             // pointer to main rule
+    char **additional_rule; // pointer to set of rules
+    char **result;          // pointer to dest of '?', should be allocated
+    char *considered;       // string which one to process
 
-	int flags; // inner
+    int flags; // inner
 } Regex;
 
 /**

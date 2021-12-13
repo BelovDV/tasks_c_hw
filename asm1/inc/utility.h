@@ -1,7 +1,7 @@
 /*
 
-	Usefull definitions i wanted add several times and created at last
-	I'd like to see many of these in standart library
+    Usefull definitions i wanted add several times and created at last
+    I'd like to see many of these in standart library
 
 */
 
@@ -50,18 +50,18 @@ void print_raw_data(FILE *stream, const void *data, size_t size);
  * if prefix and start_address are nonzero
  */
 void print_raw_data_pretty(
-	FILE *stream,
-	const void *data, size_t size,
-	const char *prefix, int *start_address);
+    FILE *stream,
+    const void *data, size_t size,
+    const char *prefix, int *start_address);
 
 /**
  * @brief frame for array...
  */
 typedef struct
 {
-	void *array;
-	size_t size;
-	size_t capacity;
+    void *array;
+    size_t size;
+    size_t capacity;
 } Array_frame;
 
 /**
@@ -83,15 +83,15 @@ void utility_array_provide_space(void *array, size_t element_size);
 void utility_array_add_space(void *array, size_t element_size);
 
 #define utility_array_end(container) \
-	(container->array[container->size])
+    (container->array[container->size])
 
 /**
  * @brief frame for static array...
  */
 typedef struct
 {
-	void *array;
-	size_t size;
+    void *array;
+    size_t size;
 } Array_static_frame;
 
 /**
