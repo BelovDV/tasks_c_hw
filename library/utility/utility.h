@@ -1,9 +1,9 @@
 /*
-	it isn't ready yet - just searching
+    it isn't ready yet - just searching
 */
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <stddef.h>
 
 #ifndef HEADER_UTILITY
 #define HEADER_UTILITY
@@ -47,18 +47,18 @@ void print_raw_data(FILE *stream, const void *data, size_t size);
  * if prefix and start_address are nonzero
  */
 void print_raw_data_pretty(
-	FILE *stream,
-	const void *data, size_t size,
-	const char *prefix, int *start_address);
+    FILE *stream,
+    const void *data, size_t size,
+    const char *prefix, int *start_address);
 
 /**
  * @brief frame for array...
  */
 typedef struct
 {
-	void *array;
-	size_t size;
-	size_t capacity;
+    void *array;
+    size_t size;
+    size_t capacity;
 } Array_frame;
 
 /**
@@ -74,8 +74,8 @@ int utility_array_realloc(Array_frame *array, size_t new_cap, size_t el_sz);
  * @exception size and capacity NOT in bytes, but in elements
  */
 int utility_array_provide_space(Array_frame *array,
-								size_t element_size,
-								size_t required_space);
+                                size_t element_size,
+                                size_t required_space);
 
 /**
  * @brief a b c 1 2 _ ? '\n' '\t' ...
