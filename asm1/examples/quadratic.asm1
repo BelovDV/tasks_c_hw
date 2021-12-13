@@ -2,149 +2,149 @@
 
 .TEXT
 :mes_give
-	mov		r4		2
-	libcall	write_str
-	ret
+    mov     r4      2
+    libcall write_str
+    ret
 .DATA
-	string	give_3_args
+    string  give_3_args
 .TEXT
 :mes_list
-	mov		r4		2
-	libcall	write_str
-	ret
+    mov     r4      2
+    libcall write_str
+    ret
 .DATA
-	string	for_ax^2+bx+c
+    string  for_ax^2+bx+c
 .TEXT
 :new_line
-	mov		r1		rf
-	mode	4
-	mov		r4		10
-	libcall	write_num
-	mov		rf		r1
-	ret
+    mov     r1      rf
+    mode	4
+    mov     r4      10
+    libcall write_num
+    mov     rf      r1
+    ret
 :mes
-	call 	2	mes_give
-	call	2	new_line
-	call	2	mes_list
-	call	2	new_line
-	ret
+    call    2   mes_give
+    call    2   new_line
+    call    2   mes_list
+    call    2   new_line
+    ret
 .TEXT
 :mes_arg_wrong
-	mov		r4		2
-	libcall	write_str
-	ret
+    mov     r4      2
+    libcall write_str
+    ret
 .DATA
-	string	try_again
+    string  try_again
 .TEXT
 :vsp_1
-	call	2	mes_arg_wrong
-	call	2	new_line
+    call    2   mes_arg_wrong
+    call    2   new_line
 :read_num
-	libcall	read_num
-	mov		r0		r4
-	ifz		r5
-	ret
-	jmp		1	vsp_1
+    libcall read_num
+    mov     r0      r4
+    ifz     r5
+    ret
+    jmp     1   vsp_1
 :find_D # a,b,c -> D
-	mul		r0		r2
-	mul		r0		4616189618054758400 
-	mov		r2		r0
-	mov		r0		r1
-	mul		r0		r1
-	sub		r0		r2
-	ret
+    mul     r0      r2
+    mul     r0      4616189618054758400 
+    mov     r2      r0
+    mov     r0      r1
+    mul     r0      r1
+    sub     r0      r2
+    ret
 _start # START
-	mode	9
+    mode    9
 # greeting message
-	call 2	mes
+    call 2  mes
 # read a, b, c: r1=a r2=b r3=c
-	call	2	read_num
-	mov		r1		r4
-	call	2	read_num
-	mov		r2		r4
-	call	2	read_num
-	mov		r3		r4
-	ifz		r1
-	jmp		1	proc_lin
+    call    2   read_num
+    mov     r1      r4
+    call    2   read_num
+    mov     r2      r4
+    call    2   read_num
+    mov     r3      r4
+    ifz     r1
+    jmp     1   proc_lin
 # find D: r4=D
-	mov		r4		r1
-	mov		r5		r2
-	mov		r6		r3
-	call	2	find_D
+    mov     r4      r1
+    mov     r5      r2
+    mov     r6      r3
+    call    2   find_D
 # 	libcall	write_num
-	call 	2	new_line
+    call    2   new_line
 # find d: r4=d
-	ifl		r4
-	jmp		1	print_result
-	libcall	sqrt
-	ifz		r4
-	jmp		1	root_1
+    ifl     r4
+    jmp     1   print_result
+    libcall sqrt
+    ifz     r4
+    jmp     1   root_1
 # process roots
-	sub		r0		r0
-	sub		r0		r2
-	mul		r1		4611686018427387904 
-	div		r0		r1 # -b/2a
-	mov		r7		r0
-	div		r4		r1 # d/2a
-	mov		r6		r4
-	sub		r0		r6
-	mov		r4		r0
-	libcall	write_num
-	call 	2	new_line
-	mov		r0		r7
-	add		r0		r6
-	mov		r4		r0
-	libcall	write_num
-	call 	2	new_line
+    sub     r0      r0
+    sub     r0      r2
+    mul     r1      4611686018427387904 
+    div     r0      r1 # -b/2a
+    mov     r7      r0
+    div     r4      r1 # d/2a
+    mov     r6      r4
+    sub     r0      r6
+    mov     r4      r0
+    libcall write_num
+    call    2	new_line
+    mov     r0      r7
+    add     r0      r6
+    mov     r4      r0
+    libcall write_num
+    call    2   new_line
 :print_result
-	call 	2	mes_end
-	call 	2	new_line
-	syscall	exit
+    call    2   mes_end
+    call    2   new_line
+    syscall	exit
 :mes_out
-	mov		r4		2
-	libcall	write_str
-	ret
+    mov     r4      2
+    libcall write_str
+    ret
 .DATA
-	string	roots:
+    string  roots:
 .TEXT
 :mes_end
-	mov		r4		2
-	libcall	write_str
-	ret
+    mov     r4      2
+    libcall write_str
+    ret
 .DATA
-	string	that's_all
+    string  that's_all
 .TEXT
 :root_1
-	sub		r0		r0
-	sub		r0		r2
-	div		r0		r1
-	div		r0		4611686018427387904 
-	mov		r4		r0
-	libcall	write_num
-	call 	2	new_line
-	jmp		1	print_result
+    sub     r0      r0
+    sub     r0      r2
+    div     r0      r1
+    div     r0      4611686018427387904 
+    mov     r4      r0
+    libcall write_num
+    call    2   new_line
+    jmp     1   print_result
 :proc_lin # r1=a r2=b r3=c
-	ifz		r2
-	jmp		1	proc_line_inf
-	sub		r0		r0
-	sub		r0		r3
-	div		r0		r2
-	mov		r4		r0
-	libcall	write_num
-	call	2	new_line
-	syscall	exit
+    ifz     r2
+    jmp     1   proc_line_inf
+    sub     r0      r0
+    sub     r0      r3
+    div     r0      r2
+    mov     r4      r0
+    libcall write_num
+    call    2   new_line
+    syscall exit
 :proc_line_inf
-	ifz		r3
-	jmp		1	proc_inf
-	jmp		2	print_result
+    ifz     r3
+    jmp     1   proc_inf
+    jmp     2   print_result
 :proc_inf
-	call	1	mes_inf
-	call	2	new_line
-	jmp		2	print_result
+    call    1   mes_inf
+    call    2   new_line
+    jmp     2   print_result
 
 :mes_inf
-	mov		r4		2
-	libcall	write_str
-	ret
+    mov     r4      2
+    libcall write_str
+    ret
 .DATA
-	string	[-inf;+inf]
+    string  [-inf;+inf]

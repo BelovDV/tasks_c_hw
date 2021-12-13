@@ -233,7 +233,7 @@ static int decode_arg_r(char *r, char *result[])
 	LOG_IN
 	for (int i = 0; i < 6; ++i)
 	{
-		LOG("%p", result[i])
+	   LOG("%p", result[i])
 	}
 	LOG_OUT
 	*/
@@ -295,10 +295,10 @@ static int decode_arg(Assembler *asm1, size_t word_number)
 	CHECK_RETURN(!regex(&reg), "cannot parse arg")
 
 	/*
-		for (int i = 0; i < 22; ++i)
-		{
-			LOG("%p", result[i])
-		}
+	   for (int i = 0; i < 22; ++i)
+	   {
+		  LOG("%p", result[i])
+	   }
 	*/
 
 	CHECK_RETURN((result[0] == NULL) == (result[21] == NULL), "mismatch []")
@@ -327,12 +327,12 @@ static int decode_arg(Assembler *asm1, size_t word_number)
 	LOG("%d", (int)arg->is_c)
 
 	/*
-		LOG("%d", (int)arg->mem)
-		LOG("%d", (int)arg->rx)
-		LOG("%d", (int)arg->k)
-		LOG("%d", (int)arg->ry)
-		LOG("%lu", arg->c)
-		*/
+	   LOG("%d", (int)arg->mem)
+	   LOG("%d", (int)arg->rx)
+	   LOG("%d", (int)arg->k)
+	   LOG("%d", (int)arg->ry)
+	   LOG("%lu", arg->c)
+	   */
 
 	int is_error = 0;
 	LOG_OUT
