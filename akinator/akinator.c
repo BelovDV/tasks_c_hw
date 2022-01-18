@@ -1,5 +1,4 @@
 #include "akinator.h"
-#include "log.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,17 +63,11 @@ static Section_a* add_answer(void** akinator) {
         head = *akinator;
     }
 
-    LOG_IN
-    LOG("'%s'", buffer)
-    LOG("%lu", length)
-    LOG_OUT
-
     Section_a* next = (Section_a*)(((char*)*akinator) + head->size);
     next->type = e_leaf;
     next->size = length;
     memcpy(next + 1, buffer, length);
     head->size += SZSA + length;
-    LOG("%lu", length)
     return next;
 }
 
@@ -97,7 +90,6 @@ static Section_q* add_question(void** akinator) {
     next->size = length;
     memcpy(next + 1, buffer, length);
     head->size += SZSQ + length;
-    LOG("%lu", length)
     return next;
 }
 
@@ -134,21 +126,13 @@ void* akinator_load(const char* filename) {
     }
 
 static void akinator_change(void** akinator, size_t* to_change) {
-    LOG("%p", *akinator)
-    LOG("%p", to_change)
-
     Header* head = *akinator;
     if (!to_change) to_change = &head->position;
     *to_change = head->size;
-    LOG("%p", to_change)
-    LOG("%lu", head->size)
 
     printf("print separation question\n");
     Section_q* next_q = add_question(akinator);
     head = *akinator;
-    LOG("%lu", head->size)
-    LOG("%p", *akinator)
-    LOG("%p", next_q)
     printf("should be old answer to be true?\n");
     printf("1 - true\n2 - false\n");
     char sym = 0;
@@ -158,29 +142,21 @@ static void akinator_change(void** akinator, size_t* to_change) {
 
     printf("print correct answer\n");
     Section_a* next_a = add_answer(akinator);
-    LOG("%p", *akinator)
-    LOG("%p", next_a)
     size_t diff = (char*)next_a - (char*)*akinator;
     if (sym == '1') next_q->pos_false = diff;
     else next_q->pos_true = diff;
 }
 
 void akinator_play(void** akinator) {
-    LOG_IN
     Header* head = *akinator;
     char* begin = *akinator;
     head->current = head->position;
-
-    LOG("%lu", head->current)
-    int type = ((Section_a*)(begin + head->current))->type;
-    LOG("%d", type)
 
     size_t* to_change = NULL;
     while (((Section_a*)(begin + head->current))->type == e_question) {
         CHECK(head->current + SZSQ <= head->size)
         Section_q* quest = (Section_q*)(begin + head->current);
         CHECK(head->current + SZSQ + quest->size <= head->size)
-        LOG("%lu", quest->size)
         printf("%.*s\n", (int)quest->size, (char*)(quest + 1));
         printf("1 - true\n2 - false\n");
         char symbol = 0;
@@ -201,7 +177,6 @@ void akinator_play(void** akinator) {
     while (symbol != '1' && symbol != '2') scanf(" %c%*[^\r\n]", &symbol);
     if (symbol == '1') printf("it's done\n");
     else akinator_change(akinator, to_change);
-    LOG_OUT
 }
 
 void akinator_store(void* akinator, const char* filename) {
