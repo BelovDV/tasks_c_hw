@@ -1,0 +1,5 @@
+Make commands
+
+    all     // to compile and execute
+    compile // create directories and compile binary file
+    execute // to execute program
