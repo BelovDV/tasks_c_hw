@@ -26,7 +26,7 @@ enum Types_expression {
 };
 
 static int is_leaf(int type) {
-    return type == e_leaf_const || type == e_leaf_func || type == e_leaf_var;
+    return type == e_leaf_const || type == e_func_log || type == e_leaf_var;
 }
 
 typedef struct {
@@ -237,6 +237,65 @@ void calculator_define_variable(Expression *expr, char name, Expression* func) {
 
 // ===== // SIMPLIFY // ===== //
 
+static int simplify_simple(Expression* expr) {
+    if (!is_leaf(expr->type)) {
+        if (expr->knot.right->type == e_leaf_const && 
+            (expr->type == e_knot_add || expr->type == e_knot_mul)) {
+            Expression* vsp = expr->knot.right;
+            expr->knot.right = expr->knot.left;
+            expr->knot.left = vsp;
+        }
+    }
+    if (expr->type == e_knot_mul) {
+        if (expr->knot.left->type == e_leaf_const) {
+            if (expr->knot.left->leaf.value == 0) {
+                calclulator_destroy(expr->knot.left);
+                calclulator_destroy(expr->knot.right);
+                expr->type = e_leaf_const;
+                expr->leaf.value = 0;
+                return 1;
+            }
+            if (expr->knot.left->leaf.value == 1) {
+                free(expr->knot.left);
+                Expression* vsp = expr->knot.right;
+                memcpy(expr, expr->knot.right, sizeof(*expr));
+                free(vsp);
+                return 1;
+            }
+        }
+    }
+    if (expr->type == e_knot_add) {
+        if (expr->knot.left->type == e_leaf_const) {
+            if (expr->knot.left->leaf.value == 0) {
+                free(expr->knot.left);
+                Expression* vsp = expr->knot.right;
+                memcpy(expr, expr->knot.right, sizeof(*expr));
+                free(vsp);
+                return 1;
+            }
+        }
+    }
+    if (expr->type == e_knot_div) {
+        if (expr->knot.right->type == e_leaf_const) {
+            if (expr->knot.right->leaf.value == 1) {
+                free(expr->knot.right);
+                Expression* vsp = expr->knot.left;
+                memcpy(expr, expr->knot.left, sizeof(*expr));
+                free(vsp);
+                return 1;
+            }
+        }
+    }
+    if (expr->type == e_knot_sub) {
+        if (expr->knot.right->type == e_leaf_const) {
+            expr->type = e_knot_add;
+            expr->knot.right->leaf.value *= -1;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 #define OPER(func) { \
     calculator_simplify_step(expr->knot.left);          \
     calculator_simplify_step(expr->knot.right);         \
@@ -248,21 +307,23 @@ void calculator_define_variable(Expression *expr, char name, Expression* func) {
         calclulator_destroy(expr->knot.right);          \
         expr->type = e_leaf_const;                      \
         expr->leaf.value = func;                        \
-        return 1;                                       \
+        was_s |= 1;                                     \
     }                                                   \
-    return 0;                                           \
+    break;                                              \
 }
 
 int calculator_simplify_step(Expression *expr) {
+    int was_s = 0;
     switch (expr->type) {
         case e_knot_add: OPER(left + right)
         case e_knot_sub: OPER(left - right)
         case e_knot_mul: OPER(left * right)
         case e_knot_div: OPER(left / right)
         case e_knot_step: OPER(pow(left, right))
-        default: return 0;
+        default: break;
     }
-    
+    was_s |= simplify_simple(expr);
+    return was_s;
 }
 
 void calculator_simplify(Expression *expr) {
@@ -272,6 +333,7 @@ void calculator_simplify(Expression *expr) {
 // ===== // RESULT // ===== //
 
 static int add_position(Expression* root, char* dest, size_t pos) {
+    if (!root) return 0;
     if (root->type == e_leaf_const) {
         if ((double)(long)(root->leaf.value == root->leaf.value)) {
             int length = 0;
