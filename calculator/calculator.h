@@ -1,19 +1,6 @@
 #ifndef HEADER_CALCULATOR
 #define HEADER_CALCULATOR
 
-enum Types_expression
-{
-    e_type_const,
-    e_type_var,
-    e_type_add,
-    e_type_mul,
-    e_type_div,
-    e_type_sub,
-    e_type_step,
-    e_type_comp,
-    e_type_func,
-};
-
 typedef double Type;
 
 struct Expression_;
@@ -27,7 +14,14 @@ Expression *calculator_parse(const char *expression);
 /**
  * @brief set the value of variable 'name' to 'value'
  */
-void calculator_define_variable(Expression *expr, const char *name, Type value);
+void calculator_define_variable(Expression *expr, char name, Type value);
+
+/**
+ * @brief single part of simplifying
+ * @param voice bool should use printf for simplifying steps
+ * @return bool was simplifyied
+ */
+int calculator_simplify_step(Expression *expr, int voice);
 
 /**
  * @brief simplify (calculate) 'expr'
@@ -37,6 +31,11 @@ void calculator_simplify(Expression *expr);
 /**
  * @brief get string form of 'expr'
  */
-const char *calculator_result(Expression *expr);
+char *calculator_result(Expression *expr);
+
+/**
+ * @brief destructor
+ */
+void calclulator_destroy(Expression* expr);
 
 #endif
