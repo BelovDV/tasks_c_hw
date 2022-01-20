@@ -3,30 +3,31 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
-enum Types_expression
-{
+enum Types_expression {
     e_none,
 
-    e_type_const, // the only one that has not 2 children
-    e_type_var,
-    e_type_add,
-    e_type_mul,
-    e_type_div,
-    e_type_sub,
-    e_type_step,
-    e_type_comp,
-    e_type_func,
+    e_leaf_const,
+    e_leaf_var,
+    e_leaf_func,
 
-    e_tok_open_br,
-    e_tok_close_br,
+    e_knot_add,
+    e_knot_sub,
+    e_knot_div,
+    e_knot_mul,
+    e_knot_step,
+    e_knot_oper,
 
-    /*
-    e_leaf_... const, var, func_name, ???
-    e_knot_... add, div - operators
-    e_control_... - brackets
-    */
+    e_control_open,
+    e_control_close,
+
+    e_func_log,
 };
+
+static int is_leaf(int type) {
+    return type == e_leaf_const || type == e_leaf_func || type == e_leaf_var;
+}
 
 typedef struct {
     Expression* left;
@@ -48,7 +49,7 @@ struct Expression_
 
 void calclulator_destroy(Expression* expr) {
     if (!expr) return;
-    if (expr->type != e_type_const) {
+    if (!is_leaf(expr->type)) {
         calclulator_destroy(expr->knot.left);
         calclulator_destroy(expr->knot.right);
     }
@@ -68,19 +69,31 @@ static size_t generate_tokens(const char* expression, Token* result) {
     while (expression[iter]) {
         int ln = 0;
         if (expression[iter] == '+')
-            result[amount++].type = e_type_add, ln = 1;
+            result[amount++].type = e_knot_add, ln = 1;
         else if (expression[iter] == '*')
-            result[amount++].type = e_type_mul, ln = 1;
+            result[amount++].type = e_knot_mul, ln = 1;
         else if (expression[iter] == '/')
-            result[amount++].type = e_type_div, ln = 1;
+            result[amount++].type = e_knot_div, ln = 1;
         else if (expression[iter] == '-')
-            result[amount++].type = e_type_sub, ln = 1;
+            result[amount++].type = e_knot_sub, ln = 1;
+        else if (expression[iter] == '^')
+            result[amount++].type = e_knot_step, ln = 1;
         else if (expression[iter] == '(')
-            result[amount++].type = e_tok_open_br, ln = 1;
+            result[amount++].type = e_control_open, ln = 1;
         else if (expression[iter] == ')')
-            result[amount++].type = e_tok_close_br, ln = 1;
+            result[amount++].type = e_control_close, ln = 1;
+        else if (expression[iter] == '$') {
+            if (expression[iter + 1] < 'a' || expression[iter + 1] > 'z') {
+                printf("Error: variables should be letters\n");
+                return 0;
+            }
+            result[amount].type = e_leaf_var;
+            result[amount].value = expression[iter + 1];
+            ++amount;
+            ln = 2;
+        }
         else if (sscanf(expression + iter, "%lf%n", &result[amount].value, &ln))
-            result[amount++].type = e_type_const;
+            result[amount++].type = e_leaf_const;
         else {
             printf("Error: unknoun token at position %lu\n", iter);
             printf("\t'%s'\n", expression + iter);
@@ -99,33 +112,51 @@ static size_t iter;
 static size_t amount;
 static Token* tokens;
 static Expression* generate_tree();
+// third priority (maximum)
 static Expression* generate_tree_3() {
     if (iter == amount) return NULL;
     Expression* result = NULL;
-    if (TYPE == e_type_const) {
-        ALLOC(result);
-        result->type = e_type_const;
-        result->leaf.value = CUR.value;
-        ++iter;
-    }
-    else if (TYPE == e_tok_open_br) {
+    if (TYPE == e_control_open) {
         ++iter;
         result = generate_tree();
-        if (TYPE != e_tok_close_br) {
+        if (iter >= amount || TYPE != e_control_close) {
             calclulator_destroy(result);
             result = NULL;
         }
         ++iter;
     }
+    else if (TYPE == e_leaf_const || TYPE == e_leaf_var) {
+        ALLOC(result);
+        result->type = TYPE;
+        result->leaf.value = CUR.value;
+        ++iter;
+    }
     return result;
 }
+// second priority
 static Expression* generate_tree_2() {
-    return generate_tree_3(); // TODO - '^'
+    Expression* root = generate_tree_3();
+    if (!root) return NULL;
+    while (iter < amount && (TYPE == e_knot_step)) {
+        Expression* vsp = NULL;
+        ALLOC(vsp);
+        vsp->type = TYPE;
+        vsp->knot.left = root;
+        root = vsp;
+        ++iter;
+        root->knot.right = generate_tree_3();
+        if (!root->knot.right) {
+            calclulator_destroy(root);
+            return NULL;
+        }
+    }
+    return root;
 }
+// thirst priority
 static Expression* generate_tree_1() {
     Expression* root = generate_tree_2();
     if (!root) return NULL;
-    while (iter < amount && (TYPE == e_type_mul || TYPE == e_type_div)) {
+    while (iter < amount && (TYPE == e_knot_mul || TYPE == e_knot_div)) {
         Expression* vsp = NULL;
         ALLOC(vsp);
         vsp->type = TYPE;
@@ -143,7 +174,7 @@ static Expression* generate_tree_1() {
 static Expression* generate_tree() {
     Expression* root = generate_tree_1();
     if (!root) return NULL;
-    while (iter < amount && (TYPE == e_type_add || TYPE == e_type_sub)) {
+    while (iter < amount && (TYPE == e_knot_add || TYPE == e_knot_sub)) {
         Expression* vsp = NULL;
         ALLOC(vsp);
         vsp->type = TYPE;
@@ -155,6 +186,10 @@ static Expression* generate_tree() {
             calclulator_destroy(root);
             return NULL;
         }
+    }
+    if (iter != amount && TYPE != e_control_close) {
+        calclulator_destroy(root);
+        return NULL;
     }
     return root;
 }
@@ -174,62 +209,109 @@ Expression *calculator_parse(const char *expression)
     return result;
 }
 
-// ===== // HARD // ===== //
+// ===== // SUBSTITUTE // ===== //
 
-void calculator_define_variable(Expression *expr, char name, Type value)
-{
-    (void)expr;
-    (void)name;
-    (void)value;
+Expression* calculator_copy(Expression* expr) {
+    if (!expr) return NULL;
+    Expression* result = NULL;
+    ALLOC(result);
+    memcpy(result, expr, sizeof(*result));
+    if (is_leaf(expr->type)) return result;
+    result->knot.left = calculator_copy(expr->knot.left);
+    result->knot.right = calculator_copy(expr->knot.right);
+    return result;
+}
+
+void calculator_define_variable(Expression *expr, char name, Expression* func) {
+    if (!expr) return;
+    if (expr->type == e_leaf_var && expr->leaf.value == name) {
+        Expression* copy = calculator_copy(func);
+        memcpy(expr, copy, sizeof(*expr));
+        free(copy);
+    }
+    else if (!is_leaf(expr->type)) {
+        calculator_define_variable(expr->knot.left, name, func);
+        calculator_define_variable(expr->knot.right, name, func);
+    }
 }
 
 // ===== // SIMPLIFY // ===== //
 
-#define OPER(x) { \
-    calculator_simplify_step(expr->knot.left, voice);   \
-    calculator_simplify_step(expr->knot.right, voice);  \
-    Type left = expr->knot.left->leaf.value;            \
-    Type right = expr->knot.right->leaf.value;          \
-    calclulator_destroy(expr->knot.left);               \
-    calclulator_destroy(expr->knot.right);              \
-    expr->type = e_type_const;                          \
-    expr->leaf.value = left x right;                    \
-    return 1;                                           \
+#define OPER(func) { \
+    calculator_simplify_step(expr->knot.left);          \
+    calculator_simplify_step(expr->knot.right);         \
+    if (expr->knot.left->type == e_leaf_const &&        \
+        expr->knot.right->type == e_leaf_const) {       \
+        Type left = expr->knot.left->leaf.value;        \
+        Type right = expr->knot.right->leaf.value;      \
+        calclulator_destroy(expr->knot.left);           \
+        calclulator_destroy(expr->knot.right);          \
+        expr->type = e_leaf_const;                      \
+        expr->leaf.value = func;                        \
+        return 1;                                       \
+    }                                                   \
+    return 0;                                           \
 }
 
-int calculator_simplify_step(Expression *expr, int voice) {
+int calculator_simplify_step(Expression *expr) {
     switch (expr->type) {
-        case e_type_const:
-            return 0;
-        case e_type_add: OPER(+);
-        case e_type_sub: OPER(-);
-        case e_type_mul: OPER(*);
-        case e_type_div: OPER(/);
+        case e_knot_add: OPER(left + right)
+        case e_knot_sub: OPER(left - right)
+        case e_knot_mul: OPER(left * right)
+        case e_knot_div: OPER(left / right)
+        case e_knot_step: OPER(pow(left, right))
         default: return 0;
     }
+    
 }
 
 void calculator_simplify(Expression *expr) {
-    while (calculator_simplify_step(expr, 0));
+    while (calculator_simplify_step(expr));
 }
 
 // ===== // RESULT // ===== //
 
 static int add_position(Expression* root, char* dest, size_t pos) {
-    if (root->type == e_type_const) {
+    if (root->type == e_leaf_const) {
+        if ((double)(long)(root->leaf.value == root->leaf.value)) {
+            int length = 0;
+            sprintf(dest + pos, "%ld%n", (long)root->leaf.value, &length);
+            pos += length;
+            return length;
+        }
         int length = 0;
         sprintf(dest + pos, "%lf%n", root->leaf.value, &length);
         pos += length;
         return length;
     }
-    dest[pos] = '(';
+    if (root->type == e_leaf_var) {
+        sprintf(dest + pos, "%c", (char)root->leaf.value);
+        pos += 1;
+        return 1;
+    }
     int delta = 1;
+    if (root->type == e_knot_oper) {
+        switch (root->knot.left->type) {
+            case e_func_log:
+                sprintf(dest + pos, "ln(");
+                pos += 3;
+                delta = add_position(root->knot.right, dest, pos);
+                sprintf(dest + pos + delta, ")");
+                pos += 1;
+                return 4 + delta;
+            default:
+                printf("Error: don't know such function\n");
+                return 0;
+        }
+    }
+    dest[pos] = '(';
     delta += add_position(root->knot.left, dest, pos + delta);
     switch (root->type) {
-        case e_type_add: dest[pos + delta++] = '+'; break;
-        case e_type_mul: dest[pos + delta++] = '*'; break;
-        case e_type_sub: dest[pos + delta++] = '-'; break;
-        case e_type_div: dest[pos + delta++] = '/'; break;
+        case e_knot_add: dest[pos + delta++] = '+'; break;
+        case e_knot_mul: dest[pos + delta++] = '*'; break;
+        case e_knot_sub: dest[pos + delta++] = '-'; break;
+        case e_knot_div: dest[pos + delta++] = '/'; break;
+        case e_knot_step: dest[pos + delta++] = '^'; break;
         default: dest[0] = 0;
     }
     delta += add_position(root->knot.right, dest, pos + delta);
@@ -244,4 +326,114 @@ char *calculator_result(Expression *expr)
     char* result = calloc(1, 4096);
     add_position(expr, result, 0);
     return result;
+}
+
+// ===== // DIFFERENTIATION // ===== //
+
+#define NEW calloc(1, sizeof(Expression))
+#define C(tree) calculator_copy(tree)
+#define D(tree) calculator_differentiate(tree, name)
+
+Expression* calculator_differentiate(Expression* expr, char name) {
+    if (expr->type == e_leaf_var && expr->leaf.value == name) {
+        expr->type = e_leaf_const;
+        expr->leaf.value = 1;
+    }
+    else if (expr->type == e_leaf_const || expr->type == e_leaf_var) {
+        expr->type = e_leaf_const;
+        expr->leaf.value = 0;
+    }
+    else if (expr->type == e_knot_add || expr->type == e_knot_sub) {
+        calculator_differentiate(expr->knot.left, name);
+        calculator_differentiate(expr->knot.right, name);
+    }
+    else if (expr->type == e_knot_mul) {
+        Expression* left = expr->knot.left;
+        Expression* right = expr->knot.right;
+        expr->type = e_knot_add;
+
+        expr->knot.left = NEW;
+        expr->knot.right = NEW;
+        if (!expr->knot.left || !expr->knot.right) {
+            free(expr->knot.left);
+            free(expr->knot.right);
+            printf("Error: calloc failed\n");
+            return expr;
+        }
+        expr->knot.left->type = expr->knot.right->type = e_knot_mul;
+
+        expr->knot.left->knot.left = left;
+        expr->knot.left->knot.right = D(C(right));
+        expr->knot.right->knot.left = D(C(left));
+        expr->knot.right->knot.right = right;
+    }
+    else if (expr->type == e_knot_div) {
+        Expression* left = expr->knot.left;
+        Expression* right = expr->knot.right;
+
+        Expression* mul_1 = NEW;
+        Expression* mul_2 = NEW;
+        Expression* mul_d = NEW;
+        Expression* sub = NEW;
+        if (!mul_1 || !mul_2 || !mul_d || !sub) {
+            free(mul_d);
+            free(mul_1);
+            free(mul_2);
+            free(sub);
+            printf("Error: calloc failed\n");
+            return expr;
+        }
+
+        mul_1->type = mul_2->type = mul_d->type = e_knot_mul;
+        sub->type = e_knot_sub;
+
+        expr->knot.left = sub;
+        sub->knot.left = mul_1;
+        sub->knot.right = mul_2;
+        expr->knot.right = mul_d;
+        mul_1->knot.left = D(C(left));
+        mul_1->knot.right = right;
+        mul_2->knot.left = left;
+        mul_2->knot.right = D(C(right));
+        mul_d->knot.left = C(right);
+        mul_d->knot.right = C(right);
+    }
+    else if (expr->type == e_knot_step) {
+        Expression* left = expr->knot.left;
+        Expression* right = expr->knot.right;
+        
+        Expression* new = NEW;
+        Expression* func = NEW;
+        Expression* ln = NEW;
+        Expression* mul = NEW;
+        if (!new || !ln || !mul || !func) {
+            free(new);
+            free(ln);
+            free(mul);
+            free(func);
+            printf("Calloc error\n");
+            return expr;
+        }
+        memcpy(new, expr, sizeof(*new));
+        expr->type = e_knot_mul;
+        expr->knot.left = new;
+        expr->knot.right = mul;
+        ln->type = e_func_log;
+        func->type = e_knot_oper;
+        func->knot.left = ln;
+        func->knot.right = C(left);
+        mul->type = e_knot_mul;
+        mul->knot.left = func;
+        mul->knot.right = C(right);
+        calculator_differentiate(expr->knot.right, name);
+    }
+    else if (expr->type == e_knot_oper && expr->knot.left->type == e_func_log) {
+        expr->type = e_knot_div;
+        free(expr->knot.left);
+        expr->knot.left = D(C(expr->knot.right));
+    }
+    else {
+        printf("Error: cannot diffirenciate such function\n");
+    }
+    return expr;
 }

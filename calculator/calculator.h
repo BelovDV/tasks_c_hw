@@ -12,16 +12,15 @@ typedef struct Expression_ Expression;
 Expression *calculator_parse(const char *expression);
 
 /**
- * @brief set the value of variable 'name' to 'value'
+ * @brief set the value of variable 'name' to 'func'
  */
-void calculator_define_variable(Expression *expr, char name, Type value);
+void calculator_define_variable(Expression *expr, char name, Expression* func);
 
 /**
  * @brief single part of simplifying
- * @param voice bool should use printf for simplifying steps
  * @return bool was simplifyied
  */
-int calculator_simplify_step(Expression *expr, int voice);
+int calculator_simplify_step(Expression *expr);
 
 /**
  * @brief simplify (calculate) 'expr'
@@ -37,5 +36,16 @@ char *calculator_result(Expression *expr);
  * @brief destructor
  */
 void calclulator_destroy(Expression* expr);
+
+/**
+ * @brief get copy of tree
+ */
+Expression* calculator_copy(Expression* expr);
+
+/**
+ * @brief just differentiate function by variable with name
+ * @return expr (the same as input)
+ */
+Expression* calculator_differentiate(Expression* expr, char name);
 
 #endif

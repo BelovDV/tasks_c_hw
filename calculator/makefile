@@ -1,4 +1,4 @@
-args = -g -Wall -Wextra -Werror -fsanitize=address,leak -D FALL_ON_ERROR -D LOG_FILE='"../temp/asm1/data/log"' -D EXTRA_LOG
+args = -g -Wall -Wextra -Werror -fsanitize=address,leak -D FALL_ON_ERROR -D LOG_FILE='"../temp/asm1/data/log"' -D EXTRA_LOG -lm
 bin=../temp/calculator
 data=../temp/calculator
 
