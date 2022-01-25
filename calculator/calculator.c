@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <errno.h>
 
 enum Types_expression {
     e_none,
@@ -32,7 +33,7 @@ static int is_leaf(int type) {
 typedef struct {
     Expression* left;
     Expression* right;
-    Expression* parent;
+    // Expression* parent;
 } Expr_knot;
 typedef struct {
     Type value;
@@ -47,13 +48,40 @@ struct Expression_
     };
 };
 
+
 void calclulator_destroy(Expression* expr) {
+#if 0
+    static void* temp_buffer[STACK_DEPTH];
+    Expression** stack = temp_buffer;
+    size_t position = 0;
+    stack[position++] = expr;
+    while (position) {
+        if (is_leaf(stack[position - 1]->type)) {
+            free(stack[--position]);
+        }
+        else if (stack[position - 1]->knot.left) {
+            stack[position++] = stack[position - 1]->knot.left;
+        }
+        else if (stack[position - 1]->knot.right) {
+            stack[position++] = stack[position - 1]->knot.right;
+        }
+        else {
+            free(stack[--position]);
+        }
+        if (position == STACK_DEPTH) {
+            printf("ERROR: stack end reached, please, increase "
+                    "STACK_DEPTH in calculator.h\n");
+            return;
+        }
+    }
+#else
     if (!expr) return;
     if (!is_leaf(expr->type)) {
         calclulator_destroy(expr->knot.left);
         calclulator_destroy(expr->knot.right);
     }
     free(expr);
+#endif
 }
 
 // ===== // PARSER // ===== //
@@ -104,7 +132,12 @@ static size_t generate_tokens(const char* expression, Token* result) {
     return amount;
 }
 
-#define ALLOC(ptr) ptr = calloc(1, sizeof(*ptr)) // arg only single ptr
+#define ALLOC(ptr, errval)          \
+    ptr = calloc(1, sizeof(*ptr));  \
+    if (!ptr) {                     \
+        errno = ENOMEM;             \
+        return errval;              \
+    }
 #define CUR (tokens[iter])
 #define TYPE (tokens[iter].type)
 
@@ -126,7 +159,7 @@ static Expression* generate_tree_3() {
         ++iter;
     }
     else if (TYPE == e_leaf_const || TYPE == e_leaf_var) {
-        ALLOC(result);
+        ALLOC(result, NULL);
         result->type = TYPE;
         result->leaf.value = CUR.value;
         ++iter;
@@ -139,7 +172,7 @@ static Expression* generate_tree_2() {
     if (!root) return NULL;
     while (iter < amount && (TYPE == e_knot_step)) {
         Expression* vsp = NULL;
-        ALLOC(vsp);
+        ALLOC(vsp, NULL);
         vsp->type = TYPE;
         vsp->knot.left = root;
         root = vsp;
@@ -158,7 +191,7 @@ static Expression* generate_tree_1() {
     if (!root) return NULL;
     while (iter < amount && (TYPE == e_knot_mul || TYPE == e_knot_div)) {
         Expression* vsp = NULL;
-        ALLOC(vsp);
+        ALLOC(vsp, NULL);
         vsp->type = TYPE;
         vsp->knot.left = root;
         root = vsp;
@@ -176,7 +209,7 @@ static Expression* generate_tree() {
     if (!root) return NULL;
     while (iter < amount && (TYPE == e_knot_add || TYPE == e_knot_sub)) {
         Expression* vsp = NULL;
-        ALLOC(vsp);
+        ALLOC(vsp, NULL);
         vsp->type = TYPE;
         vsp->knot.left = root;
         root = vsp;
@@ -197,7 +230,7 @@ static Expression* generate_tree() {
 Expression *calculator_parse(const char *expression)
 {
     size_t length = strlen(expression);
-    tokens = calloc(length, sizeof(Token));
+    tokens = calloc(length, sizeof(*tokens));
     if (!tokens) return NULL;
     size_t count = generate_tokens(expression, tokens);
 
@@ -214,7 +247,7 @@ Expression *calculator_parse(const char *expression)
 Expression* calculator_copy(Expression* expr) {
     if (!expr) return NULL;
     Expression* result = NULL;
-    ALLOC(result);
+    ALLOC(result, NULL);
     memcpy(result, expr, sizeof(*result));
     if (is_leaf(expr->type)) return result;
     result->knot.left = calculator_copy(expr->knot.left);
@@ -335,7 +368,7 @@ void calculator_simplify(Expression *expr) {
 static int add_position(Expression* root, char* dest, size_t pos) {
     if (!root) return 0;
     if (root->type == e_leaf_const) {
-        if ((double)(long)(root->leaf.value == root->leaf.value)) {
+        if ((double)(long)root->leaf.value == root->leaf.value) {
             int length = 0;
             sprintf(dest + pos, "%ld%n", (long)root->leaf.value, &length);
             pos += length;
@@ -386,7 +419,7 @@ char *calculator_result(Expression *expr)
 {
     // TODO - assume, 4096 - good size
     char* result = calloc(1, 4096);
-    add_position(expr, result, 0);
+    if (result) add_position(expr, result, 0);
     return result;
 }
 

@@ -48,4 +48,6 @@ Expression* calculator_copy(Expression* expr);
  */
 Expression* calculator_differentiate(Expression* expr, char name);
 
+#define STACK_DEPTH 0x100
+
 #endif
