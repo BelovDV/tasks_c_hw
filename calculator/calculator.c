@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <errno.h>
+#include <assert.h>
 
 enum Types_expression {
     e_none,
@@ -531,4 +532,134 @@ Expression* calculator_differentiate(Expression* expr, char name) {
         printf("Error: cannot diffirenciate such function\n");
     }
     return expr;
+}
+
+// ===== // ===== // PDF // ===== // ===== //
+
+static int graph_add_position(Expression* root, FILE* file, int* id_ptr) {
+    if (!root) return -1;
+    int id = (*id_ptr)++;
+    if (is_leaf(root->type)) {
+        if (root->type == e_leaf_const)
+            fprintf(file, "\t%d[label=%lf]\n", id, root->leaf.value);
+        else if (root->type == e_leaf_func)
+            fprintf(file, "\t%d[label=func]\n", id);
+        else if (root->type == e_leaf_var)
+            fprintf(file, "\t%d[label=%c]\n", id, (char)root->leaf.value);
+        else if (root->type == e_func_log)
+            fprintf(file, "\t%d[label=log]\n", id);
+        else
+            fprintf(file, "\t%d[label=ERROR]\n", id);
+    }
+    else {
+        fprintf(file, "\t%d[label=", id);
+        switch (root->type) {
+        case e_knot_add: fprintf(file, "\"+\"");    break;
+        case e_knot_step: fprintf(file, "\"^\"");   break;
+        case e_knot_sub: fprintf(file, "\"-\"");    break;
+        case e_knot_mul: fprintf(file, "\"*\"");    break;
+        case e_knot_div: fprintf(file, "\"/\"");    break;
+        case e_knot_oper: fprintf(file, "func");    break;
+        default: fprintf(file, "ERROR");
+        }
+        fprintf(file, "]\n");
+
+        int id_left = graph_add_position(root->knot.left, file, id_ptr);
+        int id_right = graph_add_position(root->knot.right, file, id_ptr);
+        fprintf(file, "\t%d->%d[label=left]\n", id, id_left);
+        fprintf(file, "\t%d->%d[label=right]\n", id, id_right);
+    }
+    return id;
+}
+
+void calculator_graph(Expression* expr, FILE* file) {
+    assert(expr != NULL);
+    assert(file != NULL);
+
+    fprintf(file, "digraph List\n{\n");
+    int id = 1;
+    graph_add_position(expr, file, &id);
+    fprintf(file, "}\n");
+}
+
+static void latex_add_position(Expression* root, FILE* file) {
+    if (!root) return;
+    if (root->type == e_leaf_const) {
+        if (root->leaf.value < 0) fprintf(file, "(");
+        if ((double)(long)root->leaf.value == root->leaf.value)
+            fprintf(file, "%ld", (long)root->leaf.value);
+        else
+            fprintf(file, "%lf", root->leaf.value);
+        if (root->leaf.value < 0) fprintf(file, ")");
+        return;
+    }
+    if (root->type == e_leaf_var) {
+        fprintf(file, "%c", (char)root->leaf.value);
+        return;
+    }
+    if (root->type == e_knot_oper) {
+        switch (root->knot.left->type) {
+            case e_func_log:
+                fprintf(file, "\\ln{(");
+                latex_add_position(root->knot.right, file);
+                fprintf(file, ")}");
+                return;
+            default:
+                printf("Error: don't know such function\n");
+                return;
+        }
+    }
+    switch (root->type) {
+        case e_knot_add: 
+            latex_add_position(root->knot.left, file);
+            fprintf(file, "+"); 
+            latex_add_position(root->knot.right, file);
+            break;
+        case e_knot_mul:
+            fprintf(file, "\\left(");
+            latex_add_position(root->knot.left, file);
+            fprintf(file, "\\right)\\cdot\\left("); 
+            latex_add_position(root->knot.right, file);
+            fprintf(file, "\\right)");
+            break;
+        case e_knot_sub:
+            fprintf(file, "\\left(\\left(");
+            latex_add_position(root->knot.left, file);
+            fprintf(file, "\\right)-\\left("); 
+            latex_add_position(root->knot.right, file);
+            fprintf(file, "\\right)\\right)");
+            break;
+        case e_knot_div:
+            fprintf(file, "\\frac{");
+            latex_add_position(root->knot.left, file);
+            fprintf(file, "}{"); 
+            latex_add_position(root->knot.right, file);
+            fprintf(file, "}");
+            break;
+        case e_knot_step:
+            fprintf(file, "\\left((");
+            latex_add_position(root->knot.left, file);
+            fprintf(file, ")^{"); 
+            latex_add_position(root->knot.right, file);
+            fprintf(file, "}\\right)");
+            break;
+        default: break;
+    }
+}
+
+void calculator_latex(Expression* expr, FILE* file) {
+    assert(expr != NULL);
+    assert(file != NULL);
+
+    fprintf(
+        file,
+        "\\documentclass{article}\n"
+        "\\begin{document}\n"
+        "\\[\n"
+    );
+    latex_add_position(expr, file);
+    fprintf(
+        file,
+        "\n\\]\n\\end{document}\n"
+    );
 }

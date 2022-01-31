@@ -38,6 +38,8 @@ void help() {
         "  change (c)       - set value for variable;\n"
         "  watch (w)        - show current equation;\n"
         "  differentiate (d)- differentiate current equation;\n"
+        "  graph (g)        - print graphviz text\n"
+        "  latex (x)        - print latex text\n"
         "  help (h)         - show this text.\n"
         "Format:\n"
         "  double numbers (-123.123)\n"
@@ -107,6 +109,30 @@ void differentiate(Expression* expr) {
     calculator_differentiate(expr, name);
 }
 
+void graph(Expression* expr) {
+    printf("Print path to file there to store\n");
+    char path[64] = {0};
+    scanf("%63s", path);
+    FILE* file = NULL;
+    while (!(file = fopen(path, "w"))) {
+        printf("Cannot open file, try again\n");
+        scanf("%63s", path);
+    }
+    calculator_graph(expr, file);
+}
+
+void latex(Expression* expr) {
+    printf("Print path to file there to store\n");
+    char path[64] = {0};
+    scanf("%63s", path);
+    FILE* file = NULL;
+    while (!(file = fopen(path, "w"))) {
+        printf("Cannot open file, try again\n");
+        scanf("%63s", path);
+    }
+    calculator_latex(expr, file);
+}
+
 int main() {
     printf("Calculator starts work\n");
     char c = 0;
@@ -140,6 +166,12 @@ int main() {
                 break;
             case 'd':
                 differentiate(expr);
+                break;
+            case 'g':
+                graph(expr);
+                break;
+            case 'x':
+                latex(expr);
                 break;
             default:
                 printf("Unknown command\n");

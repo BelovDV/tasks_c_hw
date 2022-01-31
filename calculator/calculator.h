@@ -1,6 +1,8 @@
 #ifndef HEADER_CALCULATOR
 #define HEADER_CALCULATOR
 
+#include <stdio.h>
+
 typedef double Type;
 
 struct Expression_;
@@ -47,6 +49,16 @@ Expression* calculator_copy(Expression* expr);
  * @return expr (the same as input)
  */
 Expression* calculator_differentiate(Expression* expr, char name);
+
+/**
+ * @brief print text for graphviz, describing expr, to file
+ */
+void calculator_graph(Expression* expr, FILE* file);
+
+/**
+ * @brief print text for latex, describing expr, to file
+ */
+void calculator_latex(Expression* expr, FILE* file);
 
 #define STACK_DEPTH 0x100
 
